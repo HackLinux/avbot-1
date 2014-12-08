@@ -11,7 +11,7 @@
 #include <boost/asio/coroutine.hpp>
 #include <vector>
 #include <string>
-#include <libirc/irc.hpp>
+#include <irc.hpp>
 #include <libwebqq/webqq.hpp>
 #include <libavbot/avbot_accounts.hpp>
 

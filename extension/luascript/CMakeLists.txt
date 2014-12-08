@@ -26,7 +26,7 @@ add_library(libluascript STATIC luascript.cpp
 		luabind/src/link_compatibility.cpp
 
 		)
-target_link_libraries(libluascript ${LUAJIT_LIBRARIES})
+target_link_libraries(libluascript ${LUAJIT_LIBRARIES} libavbot)
 
 if(MSVC)
 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /DELAYLOAD:lua51.dll" )

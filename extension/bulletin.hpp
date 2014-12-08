@@ -16,8 +16,8 @@ class bulletin
 {
 	boost::asio::io_service &io_service;
 	boost::function<void ( std::string ) > m_sender;
-	boost::shared_ptr<boost::asio::deadline_timer> m_timer;
-	boost::shared_ptr<std::vector<std::string> > m_settings;
+	std::shared_ptr<boost::asio::deadline_timer> m_timer;
+	std::shared_ptr<std::vector<std::string> > m_settings;
 	std::string m_channel_name;
 	void load_settings();
 	void schedule_next() const;

@@ -11,7 +11,7 @@ add_library(libavbot STATIC
 target_include_directories(libavbot PUBLIC
     $<TARGET_PROPERTY:xmpp,INTERFACE_INCLUDE_DIRECTORIES>)
 
-target_link_libraries(libavbot irc webqq xmpp mailexchange)
+target_link_libraries(libavbot irc webqq xmpp mailexchange libavim)
 
 set_target_properties(libavbot
 		PROPERTIES

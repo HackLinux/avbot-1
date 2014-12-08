@@ -19,7 +19,7 @@ namespace pt = boost::property_tree;
 
 void avlog_do_search(boost::asio::io_service & io_service,
 	std::string c, std::string q, std::string date,
-	boost::function<void (boost::system::error_code, pt::ptree)> handler,
+	std::function<void (boost::system::error_code, pt::ptree)> handler,
 	soci::session & db)
 {
 	pt::ptree outjson;

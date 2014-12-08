@@ -123,7 +123,7 @@ template<class MsgSender>
 struct exchangerate_fetcher_op{
 
 	exchangerate_fetcher_op(boost::asio::io_service & _io_service, MsgSender _sender, std::string _money)
-	  : io_service(_io_service), sender(_sender), stream(new avhttp::http_stream(_io_service)), money(_money), buf(boost::make_shared<boost::asio::streambuf>())
+	  : io_service(_io_service), sender(_sender), stream(new avhttp::http_stream(_io_service)), money(_money), buf(std::make_shared<boost::asio::streambuf>())
 	{
 		std::string list;
 
@@ -165,10 +165,10 @@ struct exchangerate_fetcher_op{
 		}
 	}
 
-	boost::shared_ptr<boost::asio::streambuf>  buf;
+	std::shared_ptr<boost::asio::streambuf>  buf;
 	boost::asio::io_service & io_service;
 	MsgSender sender;
-	boost::shared_ptr<avhttp::http_stream> stream;
+	std::shared_ptr<avhttp::http_stream> stream;
 	std::string money;
 };
 

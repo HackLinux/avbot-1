@@ -116,7 +116,7 @@ void new_channel_set_extension(boost::asio::io_service &io_service, avbot & mybo
 		)
 	);
 
-	static boost::shared_ptr<iplocationdetail::ipdb_mgr> ipdb_mgr;
+	static std::shared_ptr<iplocationdetail::ipdb_mgr> ipdb_mgr;
 
 	if (!ipdb_mgr)
 	{

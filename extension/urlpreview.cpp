@@ -77,9 +77,9 @@ struct urlpreview
 	boost::function<void ( std::string ) > m_sender;
 	std::string m_speaker;
 	std::string m_url;
-	boost::shared_ptr<avhttp::http_stream> m_httpstream;
+	std::shared_ptr<avhttp::http_stream> m_httpstream;
 
-	boost::shared_ptr<boost::asio::streambuf> m_content;
+	std::shared_ptr<boost::asio::streambuf> m_content;
 	int m_redirect ;
 
 	template<class MsgSender>

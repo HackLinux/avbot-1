@@ -1,3 +1,3 @@
-[submodule "libavim"]
-	path = libavim
-	url = git://github.com/avplayer/avim.git
+[submodule "protocols/libavim/avproto"]
+	path = protocols/libavim/avproto
+	url = git://github.com/avplayer/libavim.git

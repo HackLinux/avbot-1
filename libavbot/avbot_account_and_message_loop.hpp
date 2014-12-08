@@ -23,7 +23,7 @@ public:
 	void add_account(const concepts::avbot_account & avbot_account)
 	{
 		// 为新帐号创建新的协程
-		auto avbot_account_ptr = boost::make_shared<concepts::avbot_account>(avbot_account);
+		auto avbot_account_ptr = std::make_shared<concepts::avbot_account>(avbot_account);
 		boost::asio::spawn(m_io_service, boost::bind(&avbot_account_and_message_loop::message_loop_coro, this, m_quit, avbot_account_ptr, _1));
 	}
 
@@ -31,29 +31,29 @@ public:
 	void add_account(concepts::avbot_account && avbot_account)
 	{
 		// 为新帐号创建新的协程
-		auto avbot_account_ptr = boost::make_shared<concepts::avbot_account>(avbot_account);
+		auto avbot_account_ptr = std::make_shared<concepts::avbot_account>(avbot_account);
 		boost::asio::spawn(m_io_service, boost::bind(&avbot_account_and_message_loop::message_loop_coro, this, m_quit, avbot_account_ptr, _1));
 	}
 #endif
 
 private:
 
-	void message_loop_coro(boost::shared_ptr<boost::atomic<bool> > flag_quit, boost::shared_ptr<concepts::avbot_account>, boost::asio::yield_context yield);
+	void message_loop_coro(std::shared_ptr<boost::atomic<bool> > flag_quit, std::shared_ptr<concepts::avbot_account>, boost::asio::yield_context yield);
 
 private:
-	boost::shared_ptr< boost::atomic<bool> > m_quit;
+	std::shared_ptr< boost::atomic<bool> > m_quit;
 	std::vector<concepts::avbot_account*> m_accouts;
 
 	boost::asio::io_service m_io_service;
 public:
 	typedef boost::property_tree::ptree av_message_tree;
-	typedef boost::signals2::signal<void(av_message_tree, boost::shared_ptr<concepts::avbot_account> , boost::asio::yield_context) > on_message_type;
+	typedef boost::signals2::signal<void(av_message_tree, std::shared_ptr<concepts::avbot_account> , boost::asio::yield_context) > on_message_type;
 	// 每当有消息的时候激发.
 	on_message_type on_message;
 };
 
 class av_chatroom;
-typedef boost::shared_ptr<av_chatroom> av_chatroom_ptr;
+typedef std::shared_ptr<av_chatroom> av_chatroom_ptr;
 
 struct av_channel : boost::noncopyable
 {
@@ -245,11 +245,11 @@ class av_channel_manager : boost::noncopyable
 	}
 
 	std::vector<
-		boost::shared_ptr<av_channel>
+		std::shared_ptr<av_channel>
 	> m_channels;
 
 	std::vector<
-		boost::shared_ptr<av_chatroom>
+		std::shared_ptr<av_chatroom>
 	> m_unspecified_rooms;
 
 	boost::signals2::signal<void()> on_new_room;

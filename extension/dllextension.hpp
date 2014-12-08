@@ -59,7 +59,7 @@ public:
 
 	void call_dll_message(std::string textmsg, std::string channel, boost::function<void(std::string)> sender)
 	{
-		boost::shared_ptr<void> dll_module;
+		std::shared_ptr<void> dll_module;
 
 		dll_module.reset(
 			LoadLibraryW(L"avbotextension"),

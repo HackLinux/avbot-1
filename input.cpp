@@ -11,8 +11,8 @@ static boost::signals2::signal< void(std::string)> input_got_one_line;
 
 #if defined(BOOST_ASIO_HAS_POSIX_STREAM_DESCRIPTOR)
 static void inputread(const boost::system::error_code & ec, std::size_t length,
-	boost::shared_ptr<boost::asio::posix::stream_descriptor> stdin,
-	boost::shared_ptr<boost::asio::streambuf> inputbuffer)
+	std::shared_ptr<boost::asio::posix::stream_descriptor> stdin,
+	std::shared_ptr<boost::asio::streambuf> inputbuffer)
 {
 	std::istream input(inputbuffer.get());
 	std::string line;
@@ -43,10 +43,10 @@ static void input_thread(boost::asio::io_service & io_service)
 void start_stdinput(boost::asio::io_service & io_service)
 {
 #if defined(BOOST_ASIO_HAS_POSIX_STREAM_DESCRIPTOR)
-		boost::shared_ptr<boost::asio::posix::stream_descriptor> stdin(
+		std::shared_ptr<boost::asio::posix::stream_descriptor> stdin(
 			new boost::asio::posix::stream_descriptor( io_service, 0 )
 		);
-		boost::shared_ptr<boost::asio::streambuf> inputbuffer(
+		std::shared_ptr<boost::asio::streambuf> inputbuffer(
 			new boost::asio::streambuf
 		);
 		boost::asio::async_read_until(

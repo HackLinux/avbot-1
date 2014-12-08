@@ -45,7 +45,7 @@ public:
 // type erasure for avbot extension
 class avbot_extension
 {
-	boost::shared_ptr<detail::avbotexteison_interface> m_exteison_obj;
+	std::shared_ptr<detail::avbotexteison_interface> m_exteison_obj;
 	std::string m_channel_name;
 
 public:

@@ -13,7 +13,7 @@ namespace fs = boost::filesystem;
 class avlog : public boost::noncopyable
 {
 public:
-	typedef boost::shared_ptr<std::ofstream> ofstream_ptr;
+	typedef std::shared_ptr<std::ofstream> ofstream_ptr;
 	typedef std::map<std::string, ofstream_ptr> loglist;
 
 	static std::string html_escape(std::string);

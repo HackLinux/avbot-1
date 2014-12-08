@@ -71,7 +71,7 @@ namespace implementation{
 // copyable and movable, so it can be put into STL container
 class avbot_account
 {
-	boost::shared_ptr<implementation::avbot_account_indrector> _impl;
+	std::shared_ptr<implementation::avbot_account_indrector> _impl;
 public:
 	template<typename Handler>
 	inline BOOST_ASIO_INITFN_RESULT_TYPE(Handler, void(boost::system::error_code))

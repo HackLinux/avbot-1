@@ -308,7 +308,7 @@ struct stock_fetcher_op
 
 		// OK, 开始查询股票.
 		std::string url = "http://hq.sinajs.cn/?list=sh" + m_query;
-		buf = boost::make_shared<boost::asio::streambuf>();
+		buf = std::make_shared<boost::asio::streambuf>();
 		avhttp::async_read_body(*m_stream, url, *buf, *this);
 	}
 
@@ -343,7 +343,7 @@ struct stock_fetcher_op
 						// 上市没有查询到, 从深市查询.
 						std::string url = "http://hq.sinajs.cn/?list=sz" + m_query;
 
-						buf = boost::make_shared<boost::asio::streambuf>();
+						buf = std::make_shared<boost::asio::streambuf>();
 						avhttp::async_read_body(*m_stream, url, *buf, *this);
 						return;
 					}
@@ -359,10 +359,10 @@ struct stock_fetcher_op
 		}
 	}
 
-	boost::shared_ptr<boost::asio::streambuf> buf;
+	std::shared_ptr<boost::asio::streambuf> buf;
 	boost::asio::io_service & m_io_service;
 	MsgSender m_sender;
-	boost::shared_ptr<avhttp::http_stream> m_stream;
+	std::shared_ptr<avhttp::http_stream> m_stream;
 	std::string m_query;
 	int m_status;
 };

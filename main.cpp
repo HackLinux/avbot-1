@@ -20,6 +20,7 @@
 #include <vector>
 #include <signal.h>
 #include <fstream>
+#include <iterator>
 
 #include <boost/regex.hpp>
 #include <boost/shared_ptr.hpp>
@@ -91,6 +92,8 @@ extern "C" const char * avbot_version();
 extern "C" const char * avbot_version_build_time();
 extern "C" int playsound();
 
+extern pt::ptree parse_cfg(std::istream_iterator<char> first, std::istream_iterator<char> last);
+
 char * execpath;
 avlog logfile;			// 用于记录日志文件.
 
@@ -100,7 +103,7 @@ static bool need_vc = false;
 extern std::string preamble_qq_fmt, preamble_irc_fmt, preamble_xmpp_fmt;
 
 #ifdef  _WIN32
-static void wrappered_hander(boost::system::error_code ec, std::string str, boost::function<void(boost::system::error_code, std::string)> handler, boost::shared_ptr< boost::function<void()> > closer)
+static void wrappered_hander(boost::system::error_code ec, std::string str, boost::function<void(boost::system::error_code, std::string)> handler, std::shared_ptr< boost::function<void()> > closer)
 {
 	if (*closer)
 	{
@@ -113,7 +116,7 @@ static void wrappered_hander(boost::system::error_code ec, std::string str, boos
 static void channel_friend_decoder_vc_inputer(std::string vcimagebuffer, boost::function<void(boost::system::error_code, std::string)> handler, avbot_vc_feed_input &vcinput)
 {
 #ifdef  _WIN32
-	boost::shared_ptr< boost::function<void()> > closer(new boost::function<void()>);
+	std::shared_ptr< boost::function<void()> > closer(new boost::function<void()>);
 	boost::invoke_wrapper::invoke_once<void( boost::system::error_code, std::string)> wraper( handler);
 	boost::function<void(boost::system::error_code, std::string)> secondwrapper = boost::bind(wrappered_hander, _1, _2, wraper, closer);
 #else
@@ -443,13 +446,6 @@ int main(int argc, char * argv[])
 	::InitCommonControls();
 #endif
 
-	std::string qqnumber, qqpwd;
-	std::string ircnick, ircroom, ircroom_pass, ircpwd, ircserver;
-	std::string xmppuser, xmppserver, xmpppwd, xmpproom, xmppnick;
-	std::string cfgfile;
-	std::string logdir;
-	std::string chanelmap;
-	std::string mailaddr, mailpasswd, pop3server, smtpserver;
 	std::string jsdati_username, jsdati_password;
 	std::string hydati_key;
 	std::string deathbycaptcha_username, deathbycaptcha_password;
@@ -460,7 +456,8 @@ int main(int argc, char * argv[])
 	bool no_persistent_db(false);
 	std::string weblogbaseurl;
 
-	fs::path config; // 配置文件的路径
+	fs::path run_root; // 运行时的根
+	fs::path account_settings;
 
 	unsigned rpcport;
 
@@ -487,47 +484,12 @@ int main(int argc, char * argv[])
 	("gui,g",	 	"pop up settings dialog")
 #endif
 
-	("config,c", po::value<fs::path>(&config),
-		"use an alternative configuration file.")
+	("config,c", po::value<fs::path>(&account_settings),
+		"path to account file")
+	("logdir,d", po::value<fs::path>(&run_root),
+		"path to logs")
 	("nopersistent,s", po::value<bool>(&no_persistent_db),
 		"do not use persistent database file to increase security.")
-	("qqnum,u", po::value<std::string>(&qqnumber),
-		"QQ number")
-	("qqpwd,p", po::value<std::string>(&qqpwd),
-		"QQ password")
-	("logdir", po::value<std::string>(&logdir),
-		"dir for logfile")
-	("ircnick",	po::value<std::string>(&ircnick),
-		"irc nick")
-	("ircpwd", po::value<std::string>(&ircpwd),
-		"irc password")
-	("ircrooms", po::value<std::string>(&ircroom),
-		"irc room")
-	("ircrooms_passwd", po::value<std::string>(&ircroom_pass),
-		"irc passwd for room")
-	("ircserver", po::value<std::string>(&ircserver)->default_value("irc.freenode.net:6667"),
-		"irc server, default to freenode")
-
-	("xmppuser", po::value<std::string>(&xmppuser),
-		"id for XMPP,  eg: (microcaicai@gmail.com)")
-	("xmppserver", po::value<std::string>(&xmppserver),
-		"server to connect for XMPP,  eg: (xmpp.l.google.com)")
-	("xmpppwd", po::value<std::string>(&xmpppwd),
-		"password for XMPP")
-	("xmpprooms", po::value<std::string>(&xmpproom),
-		"xmpp rooms")
-	("xmppnick", po::value<std::string>(&xmppnick),
-		"nick in xmpp rooms")
-	("map", po::value<std::string>(&chanelmap),
-		"map channels. eg: --map=qq:12345,irc:avplayer;qq:56789,irc:ubuntu-cn")
-	("mail", po::value<std::string>(&mailaddr),
-		"fetch mail from this address")
-	("mailpasswd", po::value<std::string>(&mailpasswd),
-		"password of mail")
-	("pop3server", po::value<std::string>(&pop3server),
-		"pop server of mail,  default to pop.[domain]")
-	("smtpserver", po::value<std::string>(&smtpserver),
-		"smtp server of mail,  default to smtp.[domain]")
 
 	("jsdati_username", po::value<std::string>(&jsdati_username),
 		literal_to_localstr("联众打码服务账户").c_str())
@@ -593,48 +555,6 @@ int main(int argc, char * argv[])
 	preamble_xmpp_fmt = ansi_utf8(preamble_xmpp_fmt);
 #endif
 
-	if (qqnumber.empty())
-	{
-		// 命令行没指定选项，读取配置文件.
-		try
-		{
-			if (config.empty())
-			{
-				// 命令行没指定配置文件？使用默认的!
-				config = configfilepath();
-			}
-
-			AVLOG_INFO << "loading config from: " << config.string();
-			po::store(po::parse_config_file<char>(config.string().c_str(), desc), vm);
-			po::notify(vm);
-		}
-		catch (char const * e)
-		{
-			AVLOG_ERR <<  "no command line arg and config file not found neither.";
-			AVLOG_ERR <<  "try to add command line arg "
-				"or put config file in /etc/qqbotrc or ~/.qqbotrc";
-#if defined(WIN32) || defined(WITH_QT_GUI)
-			goto rungui;
-#endif
-			exit(1);
-		}
-	}
-
-
-	if (vm.count("daemon"))
-	{
-		io_service.notify_fork(boost::asio::io_service::fork_prepare);
-		daemon(0, 0);
-		io_service.notify_fork(boost::asio::io_service::fork_child);
-		AVLOG_INIT_LOGGER("/tmp");
-	}
-
-	if (!logdir.empty())
-	{
-		if (!fs::exists(logdir))
-			fs::create_directory(logdir);
-	}
-
 #ifndef _WIN32
 	// 设置到中国的时区，否则 qq 消息时间不对啊.
 	setenv("TZ", "Asia/Shanghai", 1);
@@ -643,16 +563,6 @@ int main(int argc, char * argv[])
 	// 设置 BackTrace
 	avbot_setup_seghandler();
 
-#if defined(_WIN32) || defined(WITH_QT_GUI)
-rungui:
-
-	if (qqnumber.empty() || qqpwd.empty() || vm.count("gui") > 0)
-	{
-		setup_dialog(qqnumber, qqpwd, ircnick, ircroom, ircpwd,
-			xmppuser, xmppserver, xmpppwd, xmpproom, xmppnick);
-	}
-
-#endif
 
 	{
 #ifndef _WIN32
@@ -666,20 +576,14 @@ rungui:
 	}
 
 	// 设置日志自动记录目录.
-	if (! logdir.empty())
+	if (!run_root.empty())
 	{
-		logfile.log_path(logdir);
+		logfile.log_path(run_root.string());
 #ifdef _WIN32
 		SetCurrentDirectoryW(avhttp::detail::utf8_wide(logdir).c_str());
 #else
-		chdir(logdir.c_str());
+		chdir(run_root.c_str());
 #endif // _WIN32
-	}
-
-	if (qqnumber.empty() || qqpwd.empty())
-	{
-		AVLOG_ERR << literal_to_localstr("请设置qq号码和密码.");
-		exit(1);
 	}
 
 	soci::session avlogdb;
@@ -757,22 +661,19 @@ rungui:
 		)
 	);
 
-	mybot.set_qq_account(
-		qqnumber, qqpwd,
-		boost::bind(on_verify_code, _1, boost::ref(mybot), boost::ref(decaptcha_agent)),
-		no_persistent_db
-	);
+	// 解析 accounts 文件, 设置帐号
+	pt::ptree accounts_settings;{
+	std::ifstream accounts_file_stream;
+	accounts_file_stream.open(account_settings.string().c_str(), std::ifstream::in);
+	std::istream_iterator<char> accounts_file_begin(accounts_file_stream);
+	std::istream_iterator<char> accounts_file_end;
 
-	if (!ircnick.empty())
-		mybot.set_irc_account(ircnick, ircpwd, ircserver);
+	accounts_settings = parse_cfg(accounts_file_begin, accounts_file_end);}
 
-	if (!xmppuser.empty())
-		mybot.set_xmpp_account(xmppuser, xmpppwd, xmppnick, xmppserver);
+	//
 
-	if (!mailaddr.empty())
-		mybot.set_mail_account(mailaddr, mailpasswd, pop3server, smtpserver);
+	// TODO 遍历文件夹, 设置 channel
 
-	build_group(chanelmap, mybot);
 	// 记录到日志.
 	mybot.on_message.connect(
 		boost::bind(avbot_log, _1, boost::ref(mybot), boost::ref(avlogdb))
@@ -781,23 +682,6 @@ rungui:
 	mybot.on_message.connect(
 		boost::bind(my_on_bot_command, _1, boost::ref(mybot))
 	);
-
-	std::vector<std::string> ircrooms;
-	boost::split(ircrooms, ircroom, boost::is_any_of(","));
-	BOOST_FOREACH(std::string room , ircrooms)
-	{
-		if (ircroom_pass.empty())
-			mybot.irc_join_room(std::string("#") + room);
-		else
-			mybot.irc_join_room(std::string("#") + room, ircroom_pass);
-	}
-
-	std::vector<std::string> xmpprooms;
-	boost::split(xmpprooms, xmpproom, boost::is_any_of(","));
-	BOOST_FOREACH(std::string room , xmpprooms)
-	{
-		mybot.xmpp_join_room(room);
-	}
 
 	boost::asio::io_service::work work(io_service);
 

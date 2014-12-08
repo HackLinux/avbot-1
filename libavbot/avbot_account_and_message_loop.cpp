@@ -1,8 +1,8 @@
 ﻿#include "avbot_account_and_message_loop.hpp"
 
 void avbot_account_and_message_loop::message_loop_coro(
-	boost::shared_ptr<boost::atomic<bool> > flag_quit,
-	boost::shared_ptr<concepts::avbot_account> account_ptr,
+	std::shared_ptr<boost::atomic<bool> > flag_quit,
+	std::shared_ptr<concepts::avbot_account> account_ptr,
 	boost::asio::yield_context yield)
 {
 #define  flag_check() do { if (*flag_quit){return;} } while(false)

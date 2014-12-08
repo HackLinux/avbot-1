@@ -37,7 +37,7 @@ template<class MsgSender>
 struct metalprice_fetcher_op{
 
 	metalprice_fetcher_op(boost::asio::io_service & _io_service, MsgSender _sender, std::string _metal)
-	  : io_service(_io_service), sender(_sender), stream(new avhttp::http_stream(_io_service)), metal(_metal), buf(boost::make_shared<boost::asio::streambuf>())
+	  : io_service(_io_service), sender(_sender), stream(new avhttp::http_stream(_io_service)), metal(_metal), buf(std::make_shared<boost::asio::streambuf>())
 	{
 		std::string list;
 		if (metal == "黄金")
@@ -74,10 +74,10 @@ struct metalprice_fetcher_op{
 		}
 	}
 
-	boost::shared_ptr<boost::asio::streambuf>  buf;
+	std::shared_ptr<boost::asio::streambuf>  buf;
 	boost::asio::io_service & io_service;
 	MsgSender sender;
-	boost::shared_ptr<avhttp::http_stream> stream;
+	std::shared_ptr<avhttp::http_stream> stream;
 	std::string metal;
 };
 

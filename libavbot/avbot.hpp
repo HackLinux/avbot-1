@@ -1,6 +1,7 @@
 ﻿
 #pragma once
 
+#include <vector>
 #include <boost/config.hpp>
 #include <boost/atomic.hpp>
 #include <boost/shared_ptr.hpp>
@@ -12,10 +13,11 @@
 #include <boost/property_tree/ptree.hpp>
 
 #include "libwebqq/webqq.hpp"
-#include "libirc/irc.hpp"
+#include "irc.hpp"
 #include "libxmpp/xmpp.hpp"
-#include "libmailexchange/mx.hpp"
+#include "mx.hpp"
 #include "avbot_accounts.hpp"
+#include "libavim.hpp"
 
 class BOOST_SYMBOL_VISIBLE avbot : boost::noncopyable
 {
@@ -27,14 +29,15 @@ private:
 	// 把帐户放到 STL 容器里
 	std::vector<concepts::avbot_account*> m_accouts;
 
-	boost::shared_ptr<webqq::webqq> m_qq_account;
-	boost::shared_ptr<irc::client> m_irc_account;
-	boost::shared_ptr<xmpp> m_xmpp_account;
-	boost::shared_ptr<mx::mx> m_mail_account;
+	std::shared_ptr<webqq::webqq> m_qq_account;
+	std::shared_ptr<irc::client> m_irc_account;
+	std::shared_ptr<xmpp> m_xmpp_account;
+	std::shared_ptr<mx::mx> m_mail_account;
+	std::shared_ptr<avim> m_avim_account;
 	// channel have a name :)
 	std::map<std::string, av_chanels_t> m_channel_map;
 
-	boost::shared_ptr< boost::atomic<bool> > m_quit;
+	std::shared_ptr< boost::atomic<bool> > m_quit;
 
 public:
 	avbot(boost::asio::io_service & io_service);
@@ -61,10 +64,11 @@ public:
 	bool fetch_img;
 
 public:
-	boost::shared_ptr<webqq::webqq> get_qq(){return m_qq_account;}
-	boost::shared_ptr<xmpp> get_xmpp(){return m_xmpp_account;}
-	boost::shared_ptr<mx::mx> get_mx(){return m_mail_account;}
-	boost::shared_ptr<irc::client> get_irc(){return m_irc_account;}
+	std::shared_ptr<webqq::webqq> get_qq(){return m_qq_account;}
+	std::shared_ptr<xmpp> get_xmpp(){return m_xmpp_account;}
+	std::shared_ptr<mx::mx> get_mx(){return m_mail_account;}
+	std::shared_ptr<irc::client> get_irc(){return m_irc_account;}
+	std::shared_ptr<avim> get_avim(){return m_avim_account;}
 public:
 
 	// 调用这个接口添加受 avbot 控制的账户。
@@ -94,6 +98,8 @@ public:
 	// 调用这个设置邮件账户.
 	void set_mail_account(std::string mailaddr, std::string password, std::string pop3server = "", std::string smtpserver = "");
 
+	// 调用这个设置avim账户
+	void set_avim_account(std::string key, std::string cert);
 
 public:
 	// NOTE: webqq will create a channel_name name after qq group number automantically
@@ -109,12 +115,13 @@ public:
 	void broadcast_message(std::string channel_name, std::string msg);
 	void broadcast_message(std::string channel_name, std::string exclude_room, std::string msg);
 private:
-	void accountsroutine(boost::shared_ptr<boost::atomic<bool> >, concepts::avbot_account accounts, boost::asio::yield_context yield);
+	void accountsroutine(std::shared_ptr<boost::atomic<bool> >, concepts::avbot_account accounts, boost::asio::yield_context yield);
 
 	void callback_on_irc_message(irc::irc_msg pMsg);
 	void callback_on_qq_group_message(std::string group_code, std::string who, const std::vector<webqq::qqMsg> & msg);
 	void callback_on_xmpp_group_message(std::string xmpproom, std::string who, std::string message);
 	void callback_on_mail(mailcontent mail, mx::pop3::call_to_continue_function call_to_contiune);
+	void callback_on_avim(std::string reciver, std::string sender, std::vector<avim_msg>);
 
 private:
 	void callback_on_qq_group_found(webqq::qqGroup_ptr);
@@ -128,3 +135,52 @@ public:
 	std::string format_message( const avbot::av_message_tree& message );
 	static std::string image_subdir_name(std::string cface);
 };
+
+struct avbotmsg
+{
+};
+
+struct msg_sender
+{
+
+};
+
+typedef std::function<void(std::string protocol, std::string room, std::vector<avbotmsg>, boost::asio::yield_context)> send_avbot_message_t;
+
+class avchannel
+{
+public:
+	std::function<std::string(msg_sender)> preamble_formater;
+
+	// 每个频道会接收到所有的消息, 只是会过滤掉不是自己的消息
+	void handle_message(std::string protocol, std::string sender_room, msg_sender, std::vector< avbotmsg > msg, send_avbot_message_t, boost::asio::yield_context);
+
+	void add_room(std::string protocol, std::string room)
+	{
+		m_rooms.push_back(std::make_pair(protocol, room));
+	}
+
+	// get primary channel name,  aka, the QQ group number
+	std::string get_primary()
+	{
+		for (auto room : m_rooms)
+		{
+			if (room.first == "qq")
+				return room.second;
+		}
+
+		// 没 QQ ? 用 irc 的吧...
+		for (auto room : m_rooms)
+		{
+			if (room.first == "irc")
+				return room.second.substr(1);
+		}
+
+		// 都没? 咋办? 用第一个的
+		return m_rooms[0].second;
+	}
+
+private:
+	std::vector<std::pair<std::string, std::string>> m_rooms;
+};
+

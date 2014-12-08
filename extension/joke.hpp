@@ -31,8 +31,8 @@ class joke
 private:
 	boost::asio::io_service &io_service;
 	boost::function<void ( std::string ) > m_sender;
-	boost::shared_ptr<boost::posix_time::seconds> m_interval;
-	boost::shared_ptr<boost::asio::deadline_timer> m_timer;
+	std::shared_ptr<boost::posix_time::seconds> m_interval;
+	std::shared_ptr<boost::asio::deadline_timer> m_timer;
 	std::string m_channel_name;
 
 	typedef	boost::function<void (const boost::system::error_code &, std::string)> joke_handler_type;

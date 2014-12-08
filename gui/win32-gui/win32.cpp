@@ -38,7 +38,7 @@ namespace fs = boost::filesystem;
 
 class auto_handle
 {
-	boost::shared_ptr<void> m_handle;
+	std::shared_ptr<void> m_handle;
 public:
 	explicit auto_handle(HANDLE handle)
 		: m_handle(handle, CloseHandle)
@@ -289,7 +289,7 @@ struct input_box_get_input_with_image_settings
 	}
 };
 
-typedef boost::shared_ptr<input_box_get_input_with_image_settings> input_box_get_input_with_image_settings_ptr;
+typedef std::shared_ptr<input_box_get_input_with_image_settings> input_box_get_input_with_image_settings_ptr;
 
 static bool input_box_get_input_with_image_dlgproc(HWND hwndDlg, UINT message, WPARAM wParam, LPARAM lParam, input_box_get_input_with_image_settings_ptr settings)
 {

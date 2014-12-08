@@ -27,9 +27,9 @@ struct download_qqwry_dat_op : boost::asio::coroutine
 	uncompressfunc m_uncompress;
 	Handler m_handler;
 
-	boost::shared_ptr<avhttp::http_stream> m_http_stream;
-	boost::shared_ptr<boost::asio::streambuf> m_buf_copywrite_rar;
-	boost::shared_ptr<boost::asio::streambuf> m_buf_qqwry_rar;
+	std::shared_ptr<avhttp::http_stream> m_http_stream;
+	std::shared_ptr<boost::asio::streambuf> m_buf_copywrite_rar;
+	std::shared_ptr<boost::asio::streambuf> m_buf_qqwry_rar;
 
 	download_qqwry_dat_op(boost::asio::io_service& _io_service, uncompressfunc uncompress, Handler handler)
 		: m_io_service(_io_service)
@@ -87,7 +87,7 @@ private:
 	boost::function<int(unsigned char *pDest, unsigned long *pDest_len, const unsigned char *pSource, unsigned long source_len)> m_uncompress;
 	std::string decoded_data;
 public:
-	boost::shared_ptr<QQWry::ipdb> db;
+	std::shared_ptr<QQWry::ipdb> db;
 public:
 	template<typename uncompressfunc>
 	ipdb_mgr(boost::asio::io_service & _io_servcie, uncompressfunc uncompress_)
@@ -224,7 +224,7 @@ public:
 
 	}
 public:
-	iplocation(boost::asio::io_service & _io_service, const MsgSender & sender, boost::shared_ptr<iplocationdetail::ipdb_mgr> _ipdb_mgr)
+	iplocation(boost::asio::io_service & _io_service, const MsgSender & sender, std::shared_ptr<iplocationdetail::ipdb_mgr> _ipdb_mgr)
 		: io_service( _io_service )
 		, m_sender( sender )
 		, m_ipdb_mgr(_ipdb_mgr)
@@ -232,13 +232,13 @@ public:
 	}
 private:
 	// 这么多 extension 的 qqwry 数据库当然得共享啦！ 共享那肯定就是用的共享指针.
-	boost::shared_ptr<iplocationdetail::ipdb_mgr> m_ipdb_mgr;
+	std::shared_ptr<iplocationdetail::ipdb_mgr> m_ipdb_mgr;
 	boost::asio::io_service &io_service;
 	MsgSender m_sender;
 };
 
 template<typename MsgSender>
-iplocation<typename boost::remove_reference<MsgSender>::type> make_iplocation(boost::asio::io_service & _io_service, const MsgSender & sender, boost::shared_ptr<iplocationdetail::ipdb_mgr> _ipdb_mgr)
+iplocation<typename boost::remove_reference<MsgSender>::type> make_iplocation(boost::asio::io_service & _io_service, const MsgSender & sender, std::shared_ptr<iplocationdetail::ipdb_mgr> _ipdb_mgr)
 {
 	return iplocation<typename boost::remove_reference<MsgSender>::type>(_io_service, sender, _ipdb_mgr);
 }

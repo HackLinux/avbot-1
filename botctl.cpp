@@ -48,10 +48,10 @@ extern "C" const char * avbot_version_build_time();
 extern avlog logfile;			// 用于记录日志文件.
 
 static void iopost_msg(boost::asio::io_service & io_service,
-	boost::function<void(std::string)> msg_sender,
+	std::function<void(std::string)> msg_sender,
 	std::string msg, std::string groupid)
 {
-	io_service.post(boost::bind(msg_sender, msg));
+	io_service.post(std::bind(msg_sender, msg));
 	logfile.add_log(groupid, msg, 0);
 }
 
@@ -62,11 +62,11 @@ static void write_vcode(const std::string & vc_img_data)
 	vcode.close();
 }
 
-static boost::function<void (std::string)> do_vc_code;
+static std::function<void (std::string)> do_vc_code;
 
 static void handle_join_group(webqq::qqGroup_ptr group, bool needvc,
-	const std::string & vc_img_data, boost::shared_ptr<webqq::webqq> qqclient,
-	boost::function<void(std::string)> msg_sender)
+	const std::string & vc_img_data, std::shared_ptr<webqq::webqq> qqclient,
+	std::function<void(std::string)> msg_sender)
 {
 	if (needvc && group)
 	{
@@ -83,13 +83,13 @@ static void handle_join_group(webqq::qqGroup_ptr group, bool needvc,
 		msg_sender(msg);
 
 		webqq::webqq::join_group_handler  join_group_handler;
-		join_group_handler  = boost::bind(
-			handle_join_group, _1, _2, _3, qqclient, msg_sender
+		join_group_handler  = std::bind(
+			handle_join_group, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, qqclient, msg_sender
 		);
 
-		do_vc_code = boost::bind(
+		do_vc_code = std::bind(
 			&webqq::webqq::join_group, qqclient,
-			group, _1, join_group_handler
+			group, std::placeholders::_1, join_group_handler
 		);
 	}
 	else if (group && !needvc)
@@ -103,8 +103,8 @@ static void handle_join_group(webqq::qqGroup_ptr group, bool needvc,
 }
 
 static void handle_search_group(std::string groupqqnum, webqq::qqGroup_ptr group,
-	bool needvc, const std::string & vc_img_data, boost::shared_ptr<webqq::webqq> qqclient,
-	boost::function<void(std::string)> msg_sender)
+	bool needvc, const std::string & vc_img_data, std::shared_ptr<webqq::webqq> qqclient,
+	std::function<void(std::string)> msg_sender)
 {
 	static webqq::qqGroup_ptr _group;
 
@@ -124,14 +124,14 @@ static void handle_search_group(std::string groupqqnum, webqq::qqGroup_ptr group
 		msg_sender(msg);
 
 		webqq::webqq::search_group_handler search_group_handler;
-		search_group_handler = boost::bind(
-			handle_search_group, groupqqnum, _1, _2, _3, qqclient, msg_sender
+		search_group_handler = std::bind(
+			handle_search_group, groupqqnum, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, qqclient, msg_sender
 		);
 
-		do_vc_code = boost::bind(
+		do_vc_code = std::bind(
 			&webqq::webqq::search_group, qqclient,
 			groupqqnum,
-			_1,
+			std::placeholders::_1,
 			search_group_handler
 		);
 	}
@@ -142,7 +142,7 @@ static void handle_search_group(std::string groupqqnum, webqq::qqGroup_ptr group
 		qqclient->join_group(
 			group,
 			"",
-			boost::bind(handle_join_group, _1, _2, _3, qqclient, msg_sender)
+			std::bind(handle_join_group, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, qqclient, msg_sender)
 		);
 	}
 	else
@@ -156,9 +156,9 @@ struct mail_recoder
 	typedef void result_type;
 
 	std::string channel;
-	boost::shared_ptr<InternetMailFormat> pimf;
+	std::shared_ptr<InternetMailFormat> pimf;
 	avbot * mybot;
-	boost::function<void(std::string)> sendmsg;
+	std::function<void(std::string)> sendmsg;
 
 	// 由 avbot 的 on_message 调用.
 	void operator()(avbot::av_message_tree jsonmessage, const boost::signals2::connection & con)
@@ -216,14 +216,13 @@ void on_bot_command(avbot::av_message_tree jsonmessage, avbot & mybot)
 	boost::regex ex;
 	boost::smatch what;
 	webqq::qqGroup_ptr  group;
-	boost::function<void(std::string)> msg_sender = boost::bind(
-		&avbot::broadcast_message, &mybot,
+	auto msg_sender = boost::bind(&avbot::broadcast_message, &mybot,
 		jsonmessage.get<std::string>("channel"), _1
 	);
 
-	boost::function<void(std::string)> sendmsg = mybot.get_io_service().wrap(
-		boost::bind(iopost_msg, boost::ref(mybot.get_io_service()),
-			msg_sender, _1, jsonmessage.get<std::string>("channel"))
+	std::function<void(std::string)> sendmsg = mybot.get_io_service().wrap(
+		std::bind(iopost_msg, std::ref(mybot.get_io_service()),
+			msg_sender, std::placeholders::_1, jsonmessage.get<std::string>("channel"))
 	);
 
 	std::string message = boost::trim_copy(jsonmessage.get<std::string>("message.text"));
@@ -394,9 +393,9 @@ void on_bot_command(avbot::av_message_tree jsonmessage, avbot & mybot)
 		mybot.get_qq()->search_group(
 			what[1],
 			"",
-			boost::bind(
+			std::bind(
 				handle_search_group,
-				std::string(what[1]), _1, _2, _3,
+				std::string(what[1]), std::placeholders::_1, std::placeholders::_2, std::placeholders::_3,
 				mybot.get_qq(), msg_sender
 			)
 		);
@@ -409,7 +408,7 @@ void on_bot_command(avbot::av_message_tree jsonmessage, avbot & mybot)
 
 		if (group)
 			mybot.get_io_service().post(
-				boost::bind(&webqq::webqq::update_group_member, mybot.get_qq() , group)
+				std::bind(&webqq::webqq::update_group_member, mybot.get_qq() , group)
 			);
 
 		sendmsg("群成员列表重加载.");
@@ -418,12 +417,12 @@ void on_bot_command(avbot::av_message_tree jsonmessage, avbot & mybot)
 	}
 }
 
-void set_do_vc(boost::function<void(std::string)> f)
+void set_do_vc(std::function<void(std::string)> f)
 {
 	do_vc_code = f;
 }
 
 void set_do_vc()
 {
-	do_vc_code.clear();
+	do_vc_code = std::function<void(std::string)>();
 }

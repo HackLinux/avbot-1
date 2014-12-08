@@ -101,7 +101,7 @@ static std::string room_name( const avbot::av_message_tree& message )
 avbot::avbot( boost::asio::io_service& io_service )
 	: m_io_service(io_service)
 	, fetch_img(false)
-	, m_quit(boost::make_shared< boost::atomic<bool> >(false))
+	, m_quit(std::make_shared< boost::atomic<bool> >(false))
 {
 	preamble_irc_fmt = "%a 说：";
 	preamble_qq_fmt = "qq(%a)说：";
@@ -366,6 +366,33 @@ void avbot::callback_on_mail(mailcontent mail, mx::pop3::call_to_continue_functi
 	message.add_child("message", textmessage);
 }
 
+void avbot::callback_on_avim(std::string reciver, std::string sender, std::vector<avim_msg> msg)
+{
+	using boost::property_tree::ptree;
+	ptree message;
+
+	message.put("protocol", "avim");
+	message.put("channel", get_channel_name(std::string("avim")));
+	message.put("room", reciver);
+	message.put("who.nick", sender);
+	message.put("preamble", sender);
+
+	ptree textmsg;
+
+
+	for(avim_msg m : msg)
+	{
+		if (!m.text.empty())
+			textmsg.add("text", m.text);
+
+		// TODO 图片
+	}
+
+	message.add_child("message", textmsg);
+	on_message(message);
+}
+
+
 void avbot::callback_on_qq_group_found(webqq::qqGroup_ptr group)
 {
 	// 先检查 QQ 群有没有被加入过，没有再新加入个吧.
@@ -492,6 +519,12 @@ void avbot::set_mail_account( std::string mailaddr, std::string password, std::s
 	m_mail_account->async_fetch_mail(boost::bind(&avbot::callback_on_mail, this, _1, _2));
 }
 
+void avbot::set_avim_account(std::string key, std::string cert)
+{
+	m_avim_account.reset(new avim(m_io_service, key, cert));
+	m_avim_account->on_message(std::bind(&avbot::callback_on_avim, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+}
+
 void avbot::forward_message( const boost::property_tree::ptree& message )
 {
 	std::string channel_name = message.get<std::string>( "channel" );
@@ -571,14 +604,14 @@ void avbot::add_account(BOOST_ASIO_MOVE_ARG(concepts::avbot_account) accounts)
 	boost::asio::spawn(get_io_service(), boost::bind(&avbot::accountsroutine, this, m_quit, accounts, _1));
 }
 
-void avbot::accountsroutine(boost::shared_ptr<boost::atomic<bool> > flag_quit, concepts::avbot_account accounts, boost::asio::yield_context yield)
+void avbot::accountsroutine(std::shared_ptr<boost::atomic<bool> > flag_quit, concepts::avbot_account accounts, boost::asio::yield_context yield)
 {
 #define  flag_check() do { if (*flag_quit){return;} } while(false)
 
 	boost::system::error_code ec;
 	// 添加到 m_accounts 里.
 	m_accouts.push_back(&accounts);
-	
+
 	BOOST_SCOPE_EXIT(&m_accouts, &accounts, flag_quit)
 	{
 		using namespace boost::lambda;
@@ -605,7 +638,7 @@ void avbot::accountsroutine(boost::shared_ptr<boost::atomic<bool> > flag_quit, c
 			}
 		} while (ec);
 
-		do 
+		do
 		{
 			// 等待并解析协议的消息
 			boost::property_tree::ptree message = accounts.async_recv_message(yield[ec]);
@@ -618,5 +651,37 @@ void avbot::accountsroutine(boost::shared_ptr<boost::atomic<bool> > flag_quit, c
 		// 只有遇到了必须要重登录的错误才重登录
 		// 一时半会的网络错误可没事，再获取一下就可以了
 		} while (!accounts.is_error_fatal(ec));
+	}
+}
+
+void avchannel::handle_message(std::string protocol, std::string sender_room, msg_sender,
+	std::vector<avbotmsg> msg, send_avbot_message_t send_avbot_message, boost::asio::yield_context yield_context)
+{
+	bool not_to_this = true;
+	// 看是否属于自己频道
+	for (auto room : m_rooms)
+	{
+		if (room.first == protocol && room.second == sender_room)
+		{
+			not_to_this = false;
+			break;
+		}
+	}
+
+	if (not_to_this)
+		return ;
+
+	// 开始处理本频道消息
+	for (auto room : m_rooms)
+	{
+		// 避免重复发送给自己
+		if (room.first == protocol && room.second == sender_room)
+			continue;
+
+		// TODO 开始处理消息
+		avbotmsg preamble;
+		msg.insert(std::begin(msg), preamble);
+
+		send_avbot_message(room.first, room.second, msg, yield_context);
 	}
 }

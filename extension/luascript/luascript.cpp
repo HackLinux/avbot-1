@@ -147,7 +147,7 @@ static bool test_lua51_dll()
 // 别的平台没有延迟加载技术
 static bool test_lua51_dll()
 {
-	boost::shared_ptr<void> res(
+	std::shared_ptr<void> res(
 		LoadLibraryW(L"lua51.dll"),
 		FreeLibrary
 	);

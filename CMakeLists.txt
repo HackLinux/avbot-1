@@ -14,8 +14,22 @@ Remove the CMakeCache.txt file and try again from another folder, e.g.:
 ")
 endif()
 
-
 set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake ${CMAKE_MODULE_PATH})
+
+if(MSVC)
+	if(NOT PROTOBUF_SRC_ROOT_FOLDER AND NOT PROTOBUF_LIBRARY)
+		if(DEFINED ENV{PROTOBUF_SRC_ROOT_FOLDER})
+#			message(FATAL_ERROR "shit dvafdddd")
+			set(PROTOBUF_SRC_ROOT_FOLDER $ENV{PROTOBUF_SRC_ROOT_FOLDER})
+		else()
+			set(PROTOBUF_SRC_ROOT_FOLDER ${CMAKE_CURRENT_SOURCE_DIR}/third_party/protobuf-2.6.1/)
+
+			if( NOT EXISTS ${PROTOBUF_SRC_ROOT_FOLDER}/Debug)
+				message(FATAL_ERROR "please compile protobuf in VC -- open and press F7")
+			endif()
+		endif()
+	endif()
+endif()
 
 include(cpacksettings.cmake)
 INCLUDE(CPack)
@@ -127,7 +141,7 @@ add_definitions(-DAVHTTP_ENABLE_OPENSSL -DAVHTTP_DISABLE_MULTI_DOWNLOAD -DDISABL
 configure_file(avbot.rc.in ${PROJECT_BINARY_DIR}/avbot.rc)
 configure_file(avbot.service.in ${PROJECT_BINARY_DIR}/avbot.service)
 
-add_subdirectory(sqlite)
+add_subdirectory(third_party/sqlite)
 
 if(CMAKE_MAJOR_VERSION LESS 3)
 get_target_property(sqlite_lib_location sqlite3 LOCATION)
@@ -136,10 +150,10 @@ set(sqlite_lib_location  $<TARGET_LINKER_FILE:sqlite3>)
 endif()
 message (STATUS "sqlite_lib_location == ${sqlite_lib_location}")
 
-set(SQLITE_ROOT_DIR "${PROJECT_BINARY_DIR}/sqlite/")
-set(SQLITE3_INCLUDES "${PROJECT_SOURCE_DIR}/sqlite/include/" CACHE PATH "include dir for sqlite3.h")
-set(SQLITE3_INCLUDE_DIR "${PROJECT_SOURCE_DIR}/sqlite/include/")
-set(SQLITE3_INCLUDE_DIR "${PROJECT_SOURCE_DIR}/sqlite/include/" CACHE PATH "include dir for sqlite3.h" FORCE)
+set(SQLITE_ROOT_DIR "${PROJECT_BINARY_DIR}/third_party/sqlite/")
+set(SQLITE3_INCLUDES "${PROJECT_SOURCE_DIR}/third_party/sqlite/include/" CACHE PATH "include dir for sqlite3.h")
+set(SQLITE3_INCLUDE_DIR "${PROJECT_SOURCE_DIR}/third_party/sqlite/include/")
+set(SQLITE3_INCLUDE_DIR "${PROJECT_SOURCE_DIR}/third_party/sqlite/include/" CACHE PATH "include dir for sqlite3.h" FORCE)
 set(SQLITE3_LIBRARIES $<TARGET_LINKER_FILE:sqlite3>)
 set(SQLITE3_LIBRARIES $<TARGET_LINKER_FILE:sqlite3> CACHE FILEPATH "lib file to link to sqlite")
 set(SQLITE3_LIBRARY "")
@@ -166,17 +180,13 @@ include_directories(sqlite/include)
 
 include_directories(${Boost_INCLUDE_DIRS})
 include_directories(${PROJECT_SOURCE_DIR})
+
 include_directories(avboost/include)
 include_directories(avhttp/include)
-include_directories(libwebqq/include)
 include_directories(deCAPTCHA/include)
 include_directories(avhttpd/include)
 
-add_subdirectory(libwebqq)
-add_subdirectory(libirc)
-add_subdirectory(libxmpp)
-add_subdirectory(libmailexchange)
-add_subdirectory(deCAPTCHA)
+add_subdirectory(protocols)
 add_subdirectory(libavbot)
 add_subdirectory(libavlog)
 add_subdirectory(extension)
@@ -194,6 +204,7 @@ set(AVBOT_SOURCES
 	input.cpp
 	avbot_log_search.cpp
 	protocoladapters.cpp
+	spirit.cpp
 	${PROJECT_BINARY_DIR}/version.c
 	${PROJECT_BINARY_DIR}/avbot.rc
 )
@@ -271,7 +282,7 @@ if(APPLE AND WITH_ICONV)
 	target_link_libraries(avbot -liconv)
 endif()
 
-target_link_libraries(avbot libavbot avlog extension soci_core_static soci_sqlite3_static sqlite3)
+target_link_libraries(avbot avimproto avim++ libavbot avlog extension soci_core_static soci_sqlite3_static sqlite3)
 
 target_link_libraries(avbot ${Boost_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT})
 

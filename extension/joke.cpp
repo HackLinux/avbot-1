@@ -75,8 +75,8 @@ static std::string get_joke_content(std::istream &response_stream , boost::mt199
 
 class jokefecher{
 	boost::asio::io_service & io_service;
-	boost::shared_ptr<avhttp::http_stream>	m_http_stream;
-	boost::shared_ptr<boost::asio::streambuf> m_read_buf;
+	std::shared_ptr<avhttp::http_stream>	m_http_stream;
+	std::shared_ptr<boost::asio::streambuf> m_read_buf;
 	boost::mt19937 rannum;
 public:
 	typedef void result_type;

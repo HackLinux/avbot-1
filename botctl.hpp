@@ -6,5 +6,5 @@
 // msg_sender 是一个函数, on_command 用它发送消息.
 void on_bot_command(avbot::av_message_tree message, avbot & mybot);
 
-void set_do_vc(boost::function<void(std::string)>);
+void set_do_vc(std::function<void(std::string)>);
 void set_do_vc();

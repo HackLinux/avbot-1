@@ -104,7 +104,7 @@ if(ZLIB_FOUND)
 	target_link_libraries(extension ${ZLIB_LIBRARIES})
 endif()
 
-if(LUAJIT_FOUND)
+if(LUAJIT_FOUND AND ENABLE_LUA)
 	target_link_libraries(extension libluascript)
 endif()
 
@@ -114,5 +114,4 @@ if (ENABLE_ZMQ)
 	target_link_libraries(extension libzmq-static)
 endif()
 
-target_include_directories(extension PRIVATE
-    $<TARGET_PROPERTY:xmpp,INTERFACE_INCLUDE_DIRECTORIES>)
+target_link_libraries(extension libavbot)
