@@ -277,7 +277,7 @@ void setup_dialog(std::string & qqnumber, std::string & qqpwd, std::string & irc
 struct input_box_get_input_with_image_settings
 {
 	std::string imagedata;
-	boost::function<void(boost::system::error_code, std::string)> donecallback;
+	std::function<void(boost::system::error_code, std::string)> donecallback;
 	LPPICTURE pPic;
 	boost::asio::io_service * io_service;
 	UINT_PTR timerid;
@@ -366,8 +366,8 @@ static bool input_box_get_input_with_image_dlgproc(HWND hwndDlg, UINT message, W
 	return FALSE;
 }
 
-boost::function<void()> async_input_box_get_input_with_image(boost::asio::io_service & io_service,
-	std::string imagedata, boost::function<void(boost::system::error_code, std::string)> donecallback)
+std::function<void()> async_input_box_get_input_with_image(boost::asio::io_service & io_service,
+	std::string imagedata, std::function<void(boost::system::error_code, std::string)> donecallback)
 {
 	HMODULE hIns = GetModuleHandle(NULL);
 

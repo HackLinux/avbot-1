@@ -10,7 +10,7 @@
  * 创建一个对话框并以 imagedata 指示的数据显示验证码
  * 返回一个用来撤销他的闭包。
  */
-boost::function<void()> async_input_box_get_input_with_image(boost::asio::io_service & io_service, std::string imagedata, boost::function<void(boost::system::error_code, std::string)> donecallback);
+std::function<void()> async_input_box_get_input_with_image(boost::asio::io_service & io_service, std::string imagedata, std::function<void(boost::system::error_code, std::string)> donecallback);
 
 /*
  * 开启一个模态对话框，然后让用户配置
