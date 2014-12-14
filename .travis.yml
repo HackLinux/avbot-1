@@ -1,7 +1,3 @@
-env:
-  global:
-  - secure: "bUa87Jga/4iACae2eYk+kPSRZzpUf8JWyL8UVqTXJk4ERMUvOi4shFUNhh0GypNt0pNZv+QtbxHaNH8CAfXnk5t6e91eV6BI1A8QgTy1/opjKMaYxBE260kve2qFfPvq2xEYLkbdlY1NfuQLe1y9RgMqVGNR48+X4+uQtQhNkgk="
-
 language: cpp
 compiler:
   - clang
@@ -15,6 +11,12 @@ before_install:
   - sudo apt-get install -qq wget liblua5.1-dev libluajit-5.1-dev boost1.55
   - sudo apt-get install libprotobuf-dev protobuf-compiler
   - sudo apt-get install libgloox-dev libsqlite3-dev
+  - wget http://jaist.dl.sourceforge.net/boost/boost_1_57_0.tar.bz2
+  - tar -xf boost_1_57_0.tar.bz2
+  - sudo rm -rf /usr/include/boost/phoenix/
+  - sudo rm -rf /usr/include/boost/spirit/
+  - sudo cp -a boost_1_57_0/boost/phoenix /usr/include/boost/ 
+  - sudo cp -a boost_1_57_0/boost/spirit /usr/include/boost/
   - mkdir -pv build
   - git submodule update --init
 
