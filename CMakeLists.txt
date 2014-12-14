@@ -159,7 +159,7 @@ set(SQLITE3_LIBRARIES $<TARGET_LINKER_FILE:sqlite3> CACHE FILEPATH "lib file to 
 set(SQLITE3_LIBRARY "")
 set(SQLite3_FOUND ON)
 
-add_subdirectory(soci/src EXCLUDE_FROM_ALL)
+add_subdirectory(third_party/soci/src EXCLUDE_FROM_ALL)
 
 if(NOT WIN32)
 	find_package(OpenSSL)
@@ -174,9 +174,9 @@ if(WITH_QT_GUI)
 endif()
 
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
-include_directories(soci/src/core)
-include_directories(soci/src/backends/sqlite3)
-include_directories(sqlite/include)
+include_directories(third_party/soci/src/core)
+include_directories(third_party/soci/src/backends/sqlite3)
+include_directories(third_party/sqlite/include)
 
 include_directories(${Boost_INCLUDE_DIRS})
 include_directories(${PROJECT_SOURCE_DIR})
@@ -296,7 +296,7 @@ if(HAVE_CLOCK_GETTIME)
 endif(HAVE_CLOCK_GETTIME)
 
 if (NOT WIN32)
-	set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/soci/src/cmake/modules ${CMAKE_MODULE_PATH})
+	set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/third_party/soci/src/cmake/modules ${CMAKE_MODULE_PATH})
 	find_package(DL)
 	if(DL_FOUND)
 		include_directories(${DL_INCLUDE_DIR})
