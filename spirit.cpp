@@ -105,4 +105,5 @@ ptree parse_cfg(std::istream_iterator<char> accounts_file_begin, std::istream_it
 	std::cout << std::string(first, last) << std::endl;
 
 	boost::property_tree::json_parser::write_json(std::cout, result);
+	return result;
 }
