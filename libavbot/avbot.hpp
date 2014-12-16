@@ -45,11 +45,18 @@ private:
 public:
 	avbot(boost::asio::io_service & io_service);
 	~avbot();
-	boost::asio::io_service & get_io_service(){return m_io_service;}
+
+	boost::asio::io_service & get_io_service();
+
+	// 添加一个 channel
+	void add_channel(std::shared_ptr<avchannel>);
+
+public:
+	void send_avbot_message(channel_identifier, avbotmsg, boost::asio::yield_context);
 
 public:
 	// 这里是一些公开的成员变量.
-	typedef boost::function<void (std::string) > need_verify_image;
+	typedef std::function<void (std::string) > need_verify_image;
 
 	typedef boost::signals2::signal<void(channel_identifier, avbotmsg) > on_message_type;
 
@@ -93,11 +100,6 @@ public:
 	// 调用这个设置邮件账户.
 	void set_mail_account(std::string mailaddr, std::string password, std::string pop3server = "", std::string smtpserver = "");
 
-
-public:
-	void send_avbot_message(channel_identifier, avbotmsg, boost::asio::yield_context);
-
-	void broadcast_message(std::string channel_name, std::string exclude_room, std::string msg);
 private:
 	void callback_on_qq_group_message(std::shared_ptr<webqq::webqq>, std::string group_code, std::string who, const std::vector<webqq::qqMsg> & msg);
 	void callback_on_irc_message(std::shared_ptr<irc::client>, irc::irc_msg pMsg);

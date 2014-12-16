@@ -101,34 +101,15 @@ avbot::~avbot()
 	// then all coroutine will go die
 }
 
-
-void avbot::broadcast_message(std::string channel_name, std::string exclude_room, std::string msg )
+boost::asio::io_service& avbot::get_io_service()
 {
-// 	BOOST_FOREACH(std::string chatgroupmember, m_channel_map[channel_name])
-	{
-// 		if (chatgroupmember == exclude_room)
-// 			continue;
-// 		if (chatgroupmember.substr(0,3) == "irc")
-// 		{
-// 			if (m_irc_account)
-// 				m_irc_account->chat(std::string("#") + chatgroupmember.substr(4), msg);
-// 		}
-// 		else if (chatgroupmember.substr(0,4) == "xmpp")
-// 		{
-// 			//XMPP
-// 			if (m_xmpp_account)
-// 				m_xmpp_account->send_room_message(chatgroupmember.substr(5), msg);
-// 		} else if (chatgroupmember.substr(0,2)=="qq" )
-// 		{
-// // 			if (!m_qq_account)
-// // 				continue;
-// 			std::string qqnum = chatgroupmember.substr(3);
-//
-// //
-// 		}
-	}
+    return m_io_service;
 }
 
+void avbot::add_channel(std::shared_ptr< avchannel > c)
+{
+    m_avchannels.push_back(c);
+}
 
 void avbot::callback_on_irc_message(std::shared_ptr<irc::client> irc_account, irc::irc_msg pMsg )
 {
@@ -199,6 +180,8 @@ void avbot::callback_on_qq_group_message(std::shared_ptr<webqq::webqq> qq_accoun
 
 		switch(qqmsg.type)
 		{
+			case webqq::qqMsg::LWQQ_MSG_FONT:
+			break;
 			case webqq::qqMsg::LWQQ_MSG_TEXT:
 			{
 				avbotmsg_segment text;
@@ -475,9 +458,25 @@ struct send_avbot_message_visitor : public boost::static_visitor<>
 	void operator()(std::shared_ptr<irc::client>& irc_account) const
 	{
 		// 使用 qq 的模式发送消息
-		std::string text_msg = _bot.format_message_for_qq(_msg);
+		std::string text_msg = _bot.format_message_for_textIM(_msg);
 
 		irc_account->chat(_id.room, text_msg);
+	}
+
+	void operator()(std::shared_ptr<xmpp>& xmpp_account) const
+	{
+		// 使用 qq 的模式发送消息
+		std::string text_msg = _bot.format_message_for_textIM(_msg);
+
+		xmpp_account->send_room_message(_id.room, text_msg);
+	}
+
+	void operator()(std::shared_ptr<avim>& avim_account) const
+	{
+		// 使用 qq 的模式发送消息
+		std::string text_msg = _bot.format_message_for_textIM(_msg);
+
+		//avim_account->send_room_message(_id.room, text_msg);
 	}
 
 	send_avbot_message_visitor(avbot& bot, channel_identifier& id, avbotmsg& msg, Handler& yield_context)
@@ -646,4 +645,3 @@ std::string avbot::image_subdir_name( std::string cface )
 	boost::replace_all( cface, "-", "" );
 	return cface.substr(0, 2);
 }
-
