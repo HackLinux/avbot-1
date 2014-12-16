@@ -136,7 +136,7 @@ void avbot::callback_on_irc_message(std::shared_ptr<irc::client> irc_account, ir
 	on_message(channdl_id, message);
 }
 
-void avbot::callback_on_qq_group_message(std::shared_ptr<webqq::webqq> qq_account, std::string group_code, std::string who, const std::vector< webqq::qqMsg >& msg )
+void avbot::callback_on_qq_group_message(std::shared_ptr<webqq::webqq> qq_account, std::string group_code, std::string who, std::vector<webqq::qqMsg> msg, boost::asio::yield_context yield_context)
 {
 	channel_identifier channel_id;
 	avbotmsg message;
@@ -206,11 +206,18 @@ void avbot::callback_on_qq_group_message(std::shared_ptr<webqq::webqq> qq_accoun
 					boost::system::error_code ec;
 					boost::asio::streambuf buf;
 
-					//webqq::webqq::async_fetch_cface_std_saver(ec, buf, qqmsg.cface.name, imgfile.parent_path());
-// 					webqq::webqq::async_fetch_cface(m_io_service, qqmsg.cface,
-// 						boost::bind(&webqq::webqq::async_fetch_cface_std_saver, _1, _2, qqmsg.cface.name, imgfile.parent_path())
-// 					);
+ 					webqq::webqq::async_fetch_cface(m_io_service, qqmsg.cface, buf, yield_context[ec]);
 
+					if (!ec)
+					{
+						// 把 buf 的数据写入 img_data
+						img_data.resize(buf.size());
+						buf.sgetn(&img_data[0], buf.size());
+
+						// 写入图片
+						if (m_image_saver)
+							m_image_saver(qqmsg.cface, img_data);
+					}
 				}
 
 				avbotmsg_image_segment img_content;
@@ -240,6 +247,8 @@ void avbot::callback_on_qq_group_message(std::shared_ptr<webqq::webqq> qq_accoun
 			} break;
 		}
 	}
+
+	//
 
 	on_message(channel_id, message);
 }
@@ -360,9 +369,14 @@ std::shared_ptr<webqq::webqq> avbot::add_qq_account(std::string qqnumber, std::s
 		m_I_need_vc = qq_account;
 		cb(img);
 	});
-	qq_account->on_group_msg(std::bind(&avbot::callback_on_qq_group_message, this, qq_account, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+
 	qq_account->on_group_found(std::bind(&avbot::callback_on_qq_group_found, this, qq_account, std::placeholders::_1));
 	qq_account->on_group_newbee(std::bind(&avbot::callback_on_qq_group_newbee, this, qq_account, std::placeholders::_1, std::placeholders::_2));
+
+	qq_account->on_group_msg([this, qq_account](std::string group_code, std::string who, const std::vector<webqq::qqMsg>& msg)
+	{
+		boost::asio::spawn(m_io_service, std::bind(&avbot::callback_on_qq_group_message, this, qq_account, group_code, who, msg, std::placeholders::_1));
+	});
 
 	m_qq_accounts.push_back(qq_account);
 	return qq_account;

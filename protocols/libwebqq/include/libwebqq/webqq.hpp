@@ -163,7 +163,8 @@ public:
 
 	void update_group_member(std::shared_ptr<qqGroup> group );
 
-	static void async_fetch_cface(boost::asio::io_service & , const qqMsgCface & cface, std::function<void(boost::system::error_code ec, boost::asio::streambuf & buf)> callback);
+	static void async_fetch_cface(boost::asio::io_service&, const qqMsgCface&, boost::asio::streambuf& buf, std::function<void(boost::system::error_code ec)> callback);
+	static void async_fetch_cface(boost::asio::io_service&, const qqMsgCface&, boost::asio::streambuf& buf, boost::asio::yield_context);
 	static void async_fetch_cface_std_saver(boost::system::error_code ec, boost::asio::streambuf & buf, std::string cface, boost::filesystem::path parent_path);
 
 	// get final url of the cface image

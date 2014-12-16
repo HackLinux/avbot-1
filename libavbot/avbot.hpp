@@ -101,7 +101,7 @@ public:
 	void set_mail_account(std::string mailaddr, std::string password, std::string pop3server = "", std::string smtpserver = "");
 
 private:
-	void callback_on_qq_group_message(std::shared_ptr<webqq::webqq>, std::string group_code, std::string who, const std::vector<webqq::qqMsg> & msg);
+	void callback_on_qq_group_message(std::shared_ptr<webqq::webqq> qq_account, std::string group_code, std::string who, std::vector<webqq::qqMsg> msg, boost::asio::yield_context);
 	void callback_on_irc_message(std::shared_ptr<irc::client>, irc::irc_msg pMsg);
 	void callback_on_xmpp_group_message(std::shared_ptr<xmpp>, std::string xmpproom, std::string who, std::string message);
 	void callback_on_mail(mailcontent mail, mx::pop3::call_to_continue_function call_to_contiune);
