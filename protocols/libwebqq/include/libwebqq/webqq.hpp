@@ -25,8 +25,10 @@
 #include <boost/config.hpp>
 #include <boost/function.hpp>
 #include <boost/asio.hpp>
+#include <boost/asio/spawn.hpp>
 #include <boost/function.hpp>
 #include <boost/filesystem/path.hpp>
+#include <boost/property_tree/ptree.hpp>
 #include <boost/signals2.hpp>
 #include <boost/any.hpp>
 
@@ -133,6 +135,9 @@ public:
 	~webqq();
 
 	void async_login(webqq_handler_t handler);
+	void async_login(boost::asio::yield_context handler);
+
+	boost::property_tree::ptree async_fetch_one_message(boost::asio::yield_context handler);
 
 	// 设置受到群消息的回调.
 	void on_group_msg( std::function<void ( const std::string group_code, const std::string who, const std::vector<qqMsg> & )> cb );

@@ -484,9 +484,9 @@ int main(int argc, char * argv[])
 	("gui,g",	 	"pop up settings dialog")
 #endif
 
-	("config,c", po::value<fs::path>(&account_settings),
+	("config,c", po::value<fs::path>(&account_settings)->default_value("/etc/avbot.conf"),
 		"path to account file")
-	("logdir,d", po::value<fs::path>(&run_root),
+	("logdir,d", po::value<fs::path>(&run_root)->default_value("/run/avbot"),
 		"path to logs")
 	("nopersistent,s", po::value<bool>(&no_persistent_db),
 		"do not use persistent database file to increase security.")

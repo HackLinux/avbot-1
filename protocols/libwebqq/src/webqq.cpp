@@ -48,6 +48,19 @@ void webqq::async_login(webqq::webqq_handler_t handler)
 	impl->async_login(handler);
 }
 
+void webqq::async_login(boost::asio::yield_context handler)
+{
+	// turn yield_context to handler
+
+	using namespace boost::asio;
+
+	boost::asio::detail::async_result_init<
+		boost::asio::yield_context, void(boost::system::error_code)> init((boost::asio::yield_context&&)handler);
+
+	async_login(init.handler);
+
+	return init.result.get();
+}
 
 void webqq::on_verify_code( std::function< void ( std::string ) >  cb )
 {
