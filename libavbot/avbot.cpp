@@ -13,7 +13,6 @@ namespace fs = boost::filesystem;
 #include "boost/stringencodings.hpp"
 #include "avbot.hpp"
 
-
 static std::string	preamble_formater(std::string preamble_qq_fmt, webqq::qqBuddy *buddy, std::string falbacknick, webqq::qqGroup * grpup = NULL )
 {
 	static webqq::qqBuddy _buddy("", "", "", 0, "");
@@ -85,29 +84,15 @@ static std::string	preamble_formater(std::string preamble_xmpp_fmt,  std::string
 	return preamble;
 }
 
-static std::string room_name( const avbot::av_message_tree& message )
-{
-	try{
-		if ( message.get<std::string>("protocol") == "mail")
-			return "mail";
-		if (message.get<std::string>("protocol")== "qq")
-			return message.get<std::string>("protocol") + ":" + message.get<std::string>("room.groupnumber");
-		return message.get<std::string>("protocol") + ":" + message.get<std::string>("room");
-	}catch (...){
-		return "none";
-	}
-}
-
 avbot::avbot( boost::asio::io_service& io_service )
 	: m_io_service(io_service)
-	, fetch_img(false)
-	, m_quit(std::make_shared< boost::atomic<bool> >(false))
+	, m_quit(std::make_shared<std::atomic<bool>>(false))
 {
 	preamble_irc_fmt = "%a 说：";
 	preamble_qq_fmt = "qq(%a)说：";
 	preamble_xmpp_fmt = "(%a)说：";
 
-	on_message.connect(boost::bind(&avbot::forward_message, this, _1));
+ 	on_message.connect(std::bind(&avbot::forward_message, this, std::placeholders::_1, std::placeholders::_2));
 }
 
 avbot::~avbot()
@@ -116,399 +101,320 @@ avbot::~avbot()
 	// then all coroutine will go die
 }
 
-void avbot::add_to_channel( std::string channel_name, std::string room_name )
-{
-	if( m_channel_map.find( channel_name ) != m_channel_map.end() )
-	{
-		auto c = m_channel_map[channel_name];
-
-		if( std::find( c.begin(), c.end(), room_name ) == c.end() )
-		{
-			m_channel_map[channel_name].push_back( room_name );
-		}
-	}
-	else
-	{
-		av_chanels_t c;
-		c.push_back( room_name );
-		m_channel_map.insert( std::make_pair( channel_name, c ) );
-		signal_new_channel(channel_name);
-	}
-}
-
-std::string avbot::get_channel_name( std::string room_name )
-{
-	BOOST_FOREACH(auto c, m_channel_map)
-	{
-		if (std::find(c.second.begin(), c.second.end(), room_name)!=c.second.end())
-		{
-			return c.first;
-		}
-	}
-	return "none";
-}
-
-void avbot::broadcast_message( std::string msg)
-{
-	// 广播消息到所有的频道.
-	BOOST_FOREACH(auto c, m_channel_map)
-	{
-		// 好，发消息!
-		broadcast_message(c.first, msg);
-	}
-}
-
-void avbot::broadcast_message( std::string channel_name, std::string msg )
-{
-	broadcast_message(channel_name, "", msg);
-}
 
 void avbot::broadcast_message(std::string channel_name, std::string exclude_room, std::string msg )
 {
-	BOOST_FOREACH(std::string chatgroupmember, m_channel_map[channel_name])
+// 	BOOST_FOREACH(std::string chatgroupmember, m_channel_map[channel_name])
 	{
-		if (chatgroupmember == exclude_room)
-			continue;
-		if (chatgroupmember.substr(0,3) == "irc")
-		{
-			if (m_irc_account)
-				m_irc_account->chat(std::string("#") + chatgroupmember.substr(4), msg);
-		}
-		else if (chatgroupmember.substr(0,4) == "xmpp")
-		{
-			//XMPP
-			if (m_xmpp_account)
-				m_xmpp_account->send_room_message(chatgroupmember.substr(5), msg);
-		} else if (chatgroupmember.substr(0,2)=="qq" )
-		{
-			if (!m_qq_account)
-				continue;
-			std::string qqnum = chatgroupmember.substr(3);
-
-			if(m_qq_account->get_Group_by_qq(qqnum))
-			{
-				m_qq_account->send_group_message(
-					*m_qq_account->get_Group_by_qq(qqnum),
-					msg, boost::lambda::constant(0)
-				);
-			}
-		}
+// 		if (chatgroupmember == exclude_room)
+// 			continue;
+// 		if (chatgroupmember.substr(0,3) == "irc")
+// 		{
+// 			if (m_irc_account)
+// 				m_irc_account->chat(std::string("#") + chatgroupmember.substr(4), msg);
+// 		}
+// 		else if (chatgroupmember.substr(0,4) == "xmpp")
+// 		{
+// 			//XMPP
+// 			if (m_xmpp_account)
+// 				m_xmpp_account->send_room_message(chatgroupmember.substr(5), msg);
+// 		} else if (chatgroupmember.substr(0,2)=="qq" )
+// 		{
+// // 			if (!m_qq_account)
+// // 				continue;
+// 			std::string qqnum = chatgroupmember.substr(3);
+//
+// //
+// 		}
 	}
 }
 
 
-void avbot::callback_on_irc_message( irc::irc_msg pMsg )
+void avbot::callback_on_irc_message(std::shared_ptr<irc::client> irc_account, irc::irc_msg pMsg )
 {
-	using boost::property_tree::ptree;
+	channel_identifier channdl_id;
+	avbotmsg message;
+
 	// formate irc message to JSON and call on_message
 
-	ptree message;
-	message.put("protocol", "irc");
-	message.put("room", pMsg.from.substr(1));
-	message.put("who.nick", pMsg.whom);
-	message.put("channel", get_channel_name(std::string("irc:") + pMsg.from.substr(1)));
-	message.put("preamble", preamble_formater( preamble_irc_fmt, pMsg ));
+	channdl_id.protocol = "irc";
+	channdl_id.room = pMsg.from;
 
-	ptree textmsg;
-	textmsg.add("text", pMsg.msg);
-	message.add_child("message", textmsg);
+	message.sender.nick = pMsg.whom;
+
+	message.sender.preamble = preamble_formater(preamble_irc_fmt, pMsg);
 
 	// TODO 将 识别的 URL 进行转化.
 
-	on_message(message);
+	avbotmsg_segment text_msg;
+	text_msg.type = "text";
+	text_msg.content = pMsg.msg;
+
+	message.msgs.push_back(text_msg);
+
+	on_message(channdl_id, message);
 }
 
-void avbot::callback_on_qq_group_message( std::string group_code, std::string who, const std::vector<webqq::qqMsg >& msg )
+void avbot::callback_on_qq_group_message(std::shared_ptr<webqq::webqq> qq_account, std::string group_code, std::string who, const std::vector< webqq::qqMsg >& msg )
 {
-	using boost::property_tree::ptree;
-	ptree message;
-	message.put("protocol", "qq");
-	ptree ptreee_group;
-	ptreee_group.add("code", group_code);
+	channel_identifier channel_id;
+	avbotmsg message;
 
-	webqq::qqGroup_ptr group = m_qq_account->get_Group_by_gid( group_code );
+	channel_id.protocol = "qq";
+	channel_id.room = group_code;
+
+	webqq::qqGroup_ptr group = qq_account->get_Group_by_gid( group_code );
 	std::string groupname = group_code;
 
 	if( group ){
 		groupname = group->name;
-		ptreee_group.add("groupnumber", group->qqnum);
-		ptreee_group.add("name", group->name);
-		message.put("channel", get_channel_name(std::string("qq:") + group->qqnum));
-	}else {
-		message.put("channel", group_code);
+		      channel_id.room  = group->qqnum;
+		      channel_id.room_name = group->name;
 	}
 
-	message.add_child("room", ptreee_group);
-
-	ptree ptree_who;
-	ptree_who.add("code", who);
+	message.sender.nick = who;
 
 	webqq::qqBuddy_ptr buddy;
 
 	if (group)
-		buddy = group->get_Buddy_by_uin( who );
+		buddy = group->get_Buddy_by_uin(who);
 
 	if (buddy){
-		ptree_who.add("nick", buddy->nick.empty()? buddy->uin : buddy->nick) ;
-		ptree_who.add("name", buddy->nick);
-		ptree_who.add("qqnumber", buddy->qqnum);
-		ptree_who.add("card", buddy->card);
+		message.sender.nick = buddy->nick.empty()? buddy->uin : buddy->nick ;
+		message.sender.card_name = buddy->card;
+		message.sender.qq_number = buddy->qqnum;
+
 		if( ( buddy->mflag & 1 ) == 1 || buddy->uin == group->owner )
-			message.add("op", "1");
+			message.sender.is_op = true;
 		else
-			message.add("op", "0");
-	}else{
-		ptree_who.add("nick", who);
+			message.sender.is_op = false;
 	}
 
-
-	message.add_child("who", ptree_who);
-	ptree textmsg;
-
-	std::string message_preamble = preamble_formater(preamble_qq_fmt, buddy.get(), who, group.get() );
-	message.add("preamble", message_preamble);
+	message.sender.preamble = preamble_formater(preamble_qq_fmt, buddy.get(), who, group.get());
 
 	// 解析 qqMsg
-	BOOST_FOREACH( webqq::qqMsg qqmsg, msg )
+	for (webqq::qqMsg qqmsg : msg)
 	{
 		std::string buf;
 
-		switch( qqmsg.type ) {
+		switch(qqmsg.type)
+		{
 			case webqq::qqMsg::LWQQ_MSG_TEXT:
 			{
-				textmsg.add("text", qqmsg.text);
+				avbotmsg_segment text;
+				text.type = "text";
+				text.content = qqmsg.text;
+				message.msgs.push_back(text);
 			}
 			break;
 			case webqq::qqMsg::LWQQ_MSG_CFACE:
 			{
-				if (fetch_img){
-					// save to disk
-					// 先检查这样的图片本地有没有，有你fetch的P啊.
-					fs::path imgfile = fs::path("images") / image_subdir_name(qqmsg.cface.name) / qqmsg.cface.name;
-					if (!fs::exists(imgfile))
-					{
-						if (!fs::exists("images"))
-							fs::create_directories("images");
-						// 如果顶层目录已经有了的话 ... ...
-						fs::path oldimgfile = fs::path("images") / qqmsg.cface.name;
-						if (!fs::exists(imgfile.parent_path()))
-							fs::create_directories(imgfile.parent_path());
-						if (fs::exists(oldimgfile)){
-							boost::system::error_code ec;
-							fs::create_hard_link(oldimgfile, imgfile, ec);
-							if (ec)
-								fs::copy(oldimgfile, imgfile);
-						}else{
-							// 在下载前,  先写入个空白的文件比较好,  这样就算下载的时候崩溃或者推出, 下次启动文件还是会被继续下载的.
-							boost::system::error_code ec;
-							boost::asio::streambuf buf;
+				// save to disk
+				// 先检查这样的图片本地有没有，有你fetch的P啊.
 
-							webqq::webqq::async_fetch_cface_std_saver(ec, buf, qqmsg.cface.name, imgfile.parent_path());
-							webqq::webqq::async_fetch_cface(m_io_service, qqmsg.cface, boost::bind(&webqq::webqq::async_fetch_cface_std_saver, _1, _2, qqmsg.cface.name, imgfile.parent_path()));
-						}
-					}
+				std::string img_data;
+
+				if (m_image_cacher)
+					img_data = m_image_cacher(qqmsg.cface.name);
+
+				// the image has to be feteched
+				if (img_data.empty())
+				{
+					boost::system::error_code ec;
+					boost::asio::streambuf buf;
+
+					//webqq::webqq::async_fetch_cface_std_saver(ec, buf, qqmsg.cface.name, imgfile.parent_path());
+// 					webqq::webqq::async_fetch_cface(m_io_service, qqmsg.cface,
+// 						boost::bind(&webqq::webqq::async_fetch_cface_std_saver, _1, _2, qqmsg.cface.name, imgfile.parent_path())
+// 					);
+
 				}
-				// 接收方，需要把 cfage 格式化为 url , loger 格式化为 ../images/XX ,
-				// 而 forwarder 则格式化为 http://http://w.qq.com/cgi-bin/get_group_pic?pic=XXX
-				textmsg.add("cface.name", qqmsg.cface.name);
-				textmsg.add("cface.gid", qqmsg.cface.gid);
-				textmsg.add("cface.uin", qqmsg.cface.uin);
-				textmsg.add("cface.key", qqmsg.cface.key);
-				textmsg.add("cface.server", qqmsg.cface.server);
-				textmsg.add("cface.file_id", qqmsg.cface.file_id);
-				textmsg.add("cface.vfwebqq", qqmsg.cface.vfwebqq);
-				textmsg.add("cface.gchatpicurl", qqmsg.cface.gchatpicurl);
+
+				avbotmsg_image_segment img_content;
+
+				img_content.cname = qqmsg.cface.name;
+				img_content.image_data = img_data;
+
+				avbotmsg_segment msg_seg;
+				msg_seg.type = "image";
+				msg_seg.content = img_content;
+
+				message.msgs.push_back(msg_seg);
 			}
 			break;
 			case webqq::qqMsg::LWQQ_MSG_FACE:
 			{
- 				std::string url = boost::str( boost::format("http://0.web.qstatic.com/webqqpic/style/face/%d.gif" ) % qqmsg.face );
- 				textmsg.add("img", url);
+
+				avbotmsg_emoji_segment emoji_content;
+
+				emoji_content.id = std::to_string(qqmsg.face);
+				emoji_content.emoji_url  = boost::str( boost::format("http://0.web.qstatic.com/webqqpic/style/face/%d.gif" ) % qqmsg.face );
+
+				avbotmsg_segment msg_seg;
+				msg_seg.type = "emoji";
+				msg_seg.content = emoji_content;
+				message.msgs.push_back(msg_seg);
 			} break;
 		}
 	}
-	message.add_child("message", textmsg);
-	on_message(message);
+
+	on_message(channel_id, message);
 }
 
-void avbot::callback_on_xmpp_group_message( std::string xmpproom, std::string who, std::string msg )
+void avbot::callback_on_xmpp_group_message(std::shared_ptr<xmpp>, std::string xmpproom, std::string who, std::string msg )
 {
-	using boost::property_tree::ptree;
-	ptree message;
+	channel_identifier channel_id;
+	avbotmsg message;
 
-	message.put("protocol", "xmpp");
-	message.put("channel", get_channel_name(std::string("xmpp:") + xmpproom));
-	message.put("room", xmpproom);
-	message.put("who.nick", who);
-	message.put("preamble", preamble_formater( preamble_xmpp_fmt, who, xmpproom ));
+	channel_id.protocol = "xmpp";
+	channel_id.room = xmpproom;
 
-	ptree textmsg;
-	textmsg.add("text", msg);
-	message.add_child("message", textmsg);
+	message.sender.nick = who;
+	message.sender.preamble = preamble_formater( preamble_xmpp_fmt, who, xmpproom);
 
-	on_message(message);
+	avbotmsg_segment msg_seg;
+	msg_seg.type = "text";
+	msg_seg.content = msg;
+
+	message.msgs.push_back(msg_seg);
+	on_message(channel_id, message);
 }
 
 void avbot::callback_on_mail(mailcontent mail, mx::pop3::call_to_continue_function call_to_contiune )
 {
-	m_io_service.post(boost::asio::detail::bind_handler(call_to_contiune, m_qq_account->is_online()));
+	channel_identifier channel_id;
+	avbotmsg message;
+	channel_id.protocol = "mail";
+	channel_id.room = mail.to;
 
-	using boost::property_tree::ptree;
-	ptree message;
-	message.add("protocol", "mail");
-	message.put("channel", get_channel_name(std::string("mail")));
+	message.sender.nick = mail.from;
 
-	message.add("from", mail.from);
-	message.add("to", mail.to);
-	message.add("subject", mail.subject);
-	ptree textmessage;
-	textmessage.add(mail.content_type, mail.content);
-	message.add_child("message", textmessage);
+	avbotmsg_segment msg_seg;
+	msg_seg.type = "text";
+	msg_seg.content = mail.content;
+
+	message.msgs.push_back(msg_seg);
+	on_message(channel_id, message);
+
+ 	m_io_service.post(boost::asio::detail::bind_handler(call_to_contiune, 1));
 }
 
 void avbot::callback_on_avim(std::string reciver, std::string sender, std::vector<avim_msg> msg)
 {
-	using boost::property_tree::ptree;
-	ptree message;
+	channel_identifier channel_id;
+	avbotmsg message;
+	channel_id.protocol = "avim";
+	channel_id.room = reciver;
 
-	message.put("protocol", "avim");
-	message.put("channel", get_channel_name(std::string("avim")));
-	message.put("room", reciver);
-	message.put("who.nick", sender);
-	message.put("preamble", sender);
-
-	ptree textmsg;
-
+	message.sender.nick = sender;
 
 	for(avim_msg m : msg)
 	{
 		if (!m.text.empty())
-			textmsg.add("text", m.text);
+		{
+			avbotmsg_segment msg_seg;
+			msg_seg.type = "text";
+			msg_seg.content = m.text;
+			message.msgs.push_back(msg_seg);
+		}
+		else if (!m.image.empty())
+		{
+			avbotmsg_image_segment img_seg;
 
-		// TODO 图片
+			img_seg.image_data = m.image;
+
+			avbotmsg_segment msg_seg;
+			msg_seg.type = "image";
+			msg_seg.content = img_seg;
+			message.msgs.push_back(msg_seg);
+		}
 	}
-
-	message.add_child("message", textmsg);
-	on_message(message);
+	on_message(channel_id, message);
 }
 
-
-void avbot::callback_on_qq_group_found(webqq::qqGroup_ptr group)
+void avbot::callback_on_qq_group_found(std::shared_ptr<webqq::webqq> qq_account, webqq::qqGroup_ptr group)
 {
-	// 先检查 QQ 群有没有被加入过，没有再新加入个吧.
-	if (get_channel_name(std::string("qq:")+group->qqnum)=="none")
-		add_to_channel(group->qqnum, std::string("qq:") + group->qqnum);
+	channel_identifier channel_id;
+	channel_id.protocol = "qq";
+	channel_id.room = group->qqnum;
+
+	m_account_mapping.insert(std::make_pair(channel_id, qq_account));
 }
 
-void avbot::callback_on_qq_group_newbee(webqq::qqGroup_ptr group, webqq::qqBuddy_ptr buddy)
+void avbot::callback_on_qq_group_newbee(std::shared_ptr<webqq::webqq>, webqq::qqGroup_ptr group, webqq::qqBuddy_ptr buddy)
 {
+	channel_identifier channel_id;
+	avbotmsg message;
+
 	// 新人入群咯.
-	if (get_channel_name(std::string("qq:")+group->qqnum)=="none")
-		return;
+
+	channel_id.protocol = "qq";
+	channel_id.room = group->qqnum;
+
+	message.sender.preamble = "system message";
+	message.sender.nick = "name unknow";
 
 	// 构造 json 消息,  格式同 QQ 消息, 就是多了个 newbee 字段
-
-	using boost::property_tree::ptree;
-	ptree message;
-	message.put("protocol", "qq");
-	ptree ptreee_group;
-	ptreee_group.add("code", group->code);
-
-	std::string groupname = group->name;
-
-	ptreee_group.add("groupnumber", group->qqnum);
-	ptreee_group.add("name", group->name);
-
-	message.put("channel", get_channel_name(std::string("qq:") + group->qqnum));
-	message.add_child("room", ptreee_group);
-
-	ptree ptree_who;
 	if (buddy){
-		ptree_who.add("code", buddy->uin);
-
-		ptree_who.add("name", buddy->nick);
-		ptree_who.add("qqnumber", buddy->qqnum);
-		ptree_who.add("card", buddy->card);
-		ptree_who.add("nick", buddy->card.empty()? buddy->nick:buddy->card);
-		if( ( buddy->mflag & 21 ) == 21 || buddy->uin == group->owner )
-			message.add("op", "1");
-		else
-			message.add("op", "0");
-		message.add("newbee", buddy->uin);
+		message.sender.nick = buddy->nick;
 	}else{
 		// 新人入群,  可是 webqq 暂时无法获取新人昵称.
-
-		ptree_who.add("nick", "获取名字失败");
-
 		return;
 	}
 
-	message.add_child("who", ptree_who);
-	ptree textmsg;
-
-	message.add("preamble", "群系统消息: ");
-
 	if (buddy){
-		message.add("message.text", boost::str(boost::format("新人 %s 入群.") % buddy->nick ));
-	}else{
-		message.add("message.text", "新人入群,  可是 webqq 暂时无法获取新人昵称.");
+		message.msgs.push_back(avbotmsg_segment("text", "新人入群"));
 	}
 
-	on_message(message);
+	on_message(channel_id, message);
 }
 
-void avbot::set_qq_account( std::string qqnumber, std::string password, avbot::need_verify_image cb, bool no_persistent_db)
+std::shared_ptr<webqq::webqq> avbot::add_qq_account(std::string qqnumber, std::string password, avbot::need_verify_image cb, bool no_persistent_db)
 {
-	m_qq_account.reset(new webqq::webqq(m_io_service, qqnumber, password, no_persistent_db));
-	m_qq_account->on_verify_code(cb);
-	m_qq_account->on_group_msg(boost::bind(&avbot::callback_on_qq_group_message, this, _1, _2, _3));
-	m_qq_account->on_group_found(boost::bind(&avbot::callback_on_qq_group_found, this, _1));
-	m_qq_account->on_group_newbee(boost::bind(&avbot::callback_on_qq_group_newbee, this, _1, _2));
+	auto qq_account = std::make_shared<webqq::webqq>(std::ref(get_io_service()), qqnumber, password, no_persistent_db);
+	qq_account->on_verify_code([this, qq_account, cb](std::string img)
+	{
+		m_I_need_vc = qq_account;
+		cb(img);
+	});
+	qq_account->on_group_msg(std::bind(&avbot::callback_on_qq_group_message, this, qq_account, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+	qq_account->on_group_found(std::bind(&avbot::callback_on_qq_group_found, this, qq_account, std::placeholders::_1));
+	qq_account->on_group_newbee(std::bind(&avbot::callback_on_qq_group_newbee, this, qq_account, std::placeholders::_1, std::placeholders::_2));
+
+	m_qq_accounts.push_back(qq_account);
+	return qq_account;
 }
 
-void avbot::relogin_qq_account()
+void avbot::feed_login_verify_code(std::string vcode, std::function<void()> badvcreporter)
 {
-	feed_login_verify_code("", boost::function<void()>());
+	// 检查需要验证码的 account
+	try{
+		auto qq_account = boost::any_cast<std::shared_ptr<webqq::webqq>>(m_I_need_vc);
+		if (!qq_account->is_online())
+			qq_account->feed_vc(vcode, badvcreporter);
+	}catch(const boost::bad_any_cast&)
+	{}
 }
 
-void avbot::feed_login_verify_code( std::string vcode, boost::function<void()> badvcreporter)
+std::shared_ptr<irc::client> avbot::add_irc_account( std::string nick, std::string password, std::string server, bool use_ssl)
 {
-	if (!m_qq_account->is_online())
-		m_qq_account->feed_vc(vcode, badvcreporter);
-}
-
-void avbot::set_irc_account( std::string nick, std::string password, std::string server, bool use_ssl)
-{
-	boost::cmatch what;
 	if (use_ssl){
 		boost::throw_exception(std::invalid_argument("ssl is currently not supported"));
 	}
-	m_irc_account.reset(new irc::client(m_io_service, nick, password, server));
-	m_irc_account->on_privmsg_message(boost::bind(&avbot::callback_on_irc_message, this, _1));
+
+	auto irc_account = std::make_shared<irc::client>(std::ref(m_io_service),nick, password, server);
+
+	irc_account->on_privmsg_message(std::bind(&avbot::callback_on_irc_message, this, irc_account, std::placeholders::_1));
+	m_irc_accounts.push_back(irc_account);
+	return irc_account;
 }
 
-void avbot::irc_join_room( std::string room_name )
+std::shared_ptr<xmpp> avbot::add_xmpp_account( std::string user, std::string password, std::string nick, std::string server )
 {
-	if (m_irc_account)
-		m_irc_account->join(room_name);
-}
-
-void avbot::irc_join_room(std::string room_name, std::string room_passwd)
-{
-	if (m_irc_account)
-		m_irc_account->join(room_name, room_passwd);
-}
-
-void avbot::set_xmpp_account( std::string user, std::string password, std::string nick, std::string server )
-{
-	m_xmpp_account.reset(new xmpp(m_io_service, user, password, server, nick));
-	m_xmpp_account->on_room_message(boost::bind(&avbot::callback_on_xmpp_group_message, this, _1, _2, _3));
-}
-
-void avbot::xmpp_join_room( std::string room )
-{
-	if (m_xmpp_account)
-		m_xmpp_account->join(room);
+	auto xmpp_account = std::make_shared<xmpp>(std::ref(m_io_service), user, password, server, nick);
+	xmpp_account->on_room_message(std::bind(&avbot::callback_on_xmpp_group_message, this,xmpp_account, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+	m_xmpp_accounts.push_back(xmpp_account);
+	return xmpp_account;
 }
 
 void avbot::set_mail_account( std::string mailaddr, std::string password, std::string pop3server, std::string smtpserver )
@@ -519,74 +425,124 @@ void avbot::set_mail_account( std::string mailaddr, std::string password, std::s
 	m_mail_account->async_fetch_mail(boost::bind(&avbot::callback_on_mail, this, _1, _2));
 }
 
-void avbot::set_avim_account(std::string key, std::string cert)
+std::shared_ptr<avim> avbot::add_avim_account(std::string key, std::string cert)
 {
-	m_avim_account.reset(new avim(m_io_service, key, cert));
-	m_avim_account->on_message(std::bind(&avbot::callback_on_avim, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+	auto avim_account = std::make_shared<avim>(std::ref(m_io_service), key, cert);
+
+	avim_account->on_message(std::bind(&avbot::callback_on_avim, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+	m_avim_accounts.push_back(avim_account);
+	return avim_account;
 }
 
-void avbot::forward_message( const boost::property_tree::ptree& message )
+void avbot::forward_message( const channel_identifier& i, const avbotmsg& m)
 {
-	std::string channel_name = message.get<std::string>( "channel" );
-	// 根据 channels 的配置，执行消息转发.
-	// 转发前格式化消息.
+	send_avbot_message_t message_sender = std::bind(&avbot::send_avbot_message, this,
+		std::placeholders::_1, std::placeholders::_2, std::placeholders::_3);
 
-	std::string formated = format_message( message );
-
-	if( channel_name.empty() )
+	bool processed = false;
+	for (std::shared_ptr<avchannel> & c : m_avchannels)
 	{
-		// do broadcast_message
-		broadcast_message(formated);
-	}
-	else
-	{
-		if( m_channel_map.find( channel_name ) != m_channel_map.end() )
+		if (c->can_handle(i))
 		{
-			// 好，发消息!
-			broadcast_message( channel_name, room_name( message ), formated );
+			processed = true;
+			boost::asio::spawn(get_io_service(),
+				std::bind(&avchannel::handle_message, c, i, m, message_sender, std::placeholders::_1));
 		}
+	}
+
+	if (!processed)
+	{
+		// 居然有消息没有被任何频道接收??? ???
+		// TODO 想点办法
 	}
 }
 
-
-std::string avbot::format_message( const avbot::av_message_tree& message )
+template<typename Handler>
+struct send_avbot_message_visitor : public boost::static_visitor<>
 {
-	std::string linermessage;
-	// 首先是根据 nick 格式化
-	if ( message.get<std::string>("protocol") != "mail")
+	template<class T>
+	void operator()(T &) const
 	{
-		linermessage += message.get<std::string>("preamble", "");
+	}
 
-		BOOST_FOREACH(const auto & v, message.get_child("message"))
-		{
-			if (v.first == "text")
-			{
-				linermessage += v.second.data();
-			}else if (v.first == "url"||v.first == "img")
-			{
-				linermessage += " ";
-				linermessage += v.second.data();
-				linermessage += " ";
-			}else if (v.first == "cface"){
-				// 老版本是显示 执行 HTTP 访问获得 302 跳转后的 URL.
-				// 但是新的webqq已经把无cookie的访问河了蟹了。于是需要显示的是avbot vps上下载后的地址。不过这个需要呵呵了。
-				if (m_urlformater)
-					linermessage += m_urlformater(v.second);
-				else
-					linermessage += v.second.get<std::string>("gchatpicurl");
-				linermessage += " ";
-			}
-		}
-	}else{
+	void operator()(std::shared_ptr<webqq::webqq>& qq) const
+	{
+		// 使用 qq 的模式发送消息
+		std::string text_msg = _bot.format_message_for_qq(_msg);
+ 		qq->send_group_message(_id.room, text_msg, _yield_context);
+	}
 
-		linermessage  = boost::str(
-			boost::format("[QQ邮件]\n发件人:%s\n收件人:%s\n主题:%s\n\n%s")
-			% message.get<std::string>("from") % message.get<std::string>("to") % message.get<std::string>("subject")
-			% message.get_child("message").data()
-		);
- 	}
+	void operator()(std::shared_ptr<irc::client>& irc_account) const
+	{
+		// 使用 qq 的模式发送消息
+		std::string text_msg = _bot.format_message_for_qq(_msg);
 
- 	return linermessage;
+		irc_account->chat(_id.room, text_msg);
+	}
+
+	send_avbot_message_visitor(avbot& bot, channel_identifier& id, avbotmsg& msg, Handler& yield_context)
+		: _bot(bot), _id(id), _msg(msg), _yield_context(yield_context)
+	{}
+
+	avbot& _bot;
+	channel_identifier& _id;
+	avbotmsg& _msg;
+	Handler& _yield_context;
+};
+
+void avbot::send_avbot_message(channel_identifier id, avbotmsg msg, boost::asio::yield_context yield_context)
+{
+	using namespace boost::asio;
+
+	boost::asio::detail::async_result_init<boost::asio::yield_context, void(boost::system::error_code)>
+		init((boost::asio::yield_context&&)yield_context);
+
+	send_avbot_message_visitor<BOOST_ASIO_HANDLER_TYPE(boost::asio::yield_context, void(boost::system::error_code))>
+		visitor(*this, id, msg, init.handler);
+
+	boost::apply_visitor(visitor, m_account_mapping[id]);
+
+	return init.result.get();
+}
+
+std::string avbot::format_message_for_qq(const avbotmsg& message )
+{
+// 	std::string linermessage;
+// 	// 首先是根据 nick 格式化
+// 	if ( message.get<std::string>("protocol") != "mail")
+// 	{
+// 		linermessage += message.get<std::string>("preamble", "");
+//
+// 		BOOST_FOREACH(const auto & v, message.get_child("message"))
+// 		{
+// 			if (v.first == "text")
+// 			{
+// 				linermessage += v.second.data();
+// 			}else if (v.first == "url"||v.first == "img")
+// 			{
+// 				linermessage += " ";
+// 				linermessage += v.second.data();
+// 				linermessage += " ";
+// 			}else if (v.first == "cface"){
+// 				// 老版本是显示 执行 HTTP 访问获得 302 跳转后的 URL.
+// 				// 但是新的webqq已经把无cookie的访问河了蟹了。于是需要显示的是avbot vps上下载后的地址。不过这个需要呵呵了。
+// 				if (m_urlformater)
+// 					linermessage += m_urlformater(v.second);
+// 				else
+// 					linermessage += v.second.get<std::string>("gchatpicurl");
+// 				linermessage += " ";
+// 			}
+// 		}
+// 	}else{
+//
+// 		linermessage  = boost::str(
+// 			boost::format("[QQ邮件]\n发件人:%s\n收件人:%s\n主题:%s\n\n%s")
+// 			% message.get<std::string>("from") % message.get<std::string>("to") % message.get<std::string>("subject")
+// 			% message.get_child("message").data()
+// 		);
+//  	}
+//
+//  	return linermessage;
 }
 
 std::string avbot::image_subdir_name( std::string cface )
@@ -597,91 +553,3 @@ std::string avbot::image_subdir_name( std::string cface )
 	return cface.substr(0, 2);
 }
 
-
-void avbot::add_account(BOOST_ASIO_MOVE_ARG(concepts::avbot_account) accounts)
-{
-	// 创建只属于它的专属协程
-	boost::asio::spawn(get_io_service(), boost::bind(&avbot::accountsroutine, this, m_quit, accounts, _1));
-}
-
-void avbot::accountsroutine(std::shared_ptr<boost::atomic<bool> > flag_quit, concepts::avbot_account accounts, boost::asio::yield_context yield)
-{
-#define  flag_check() do { if (*flag_quit){return;} } while(false)
-
-	boost::system::error_code ec;
-	// 添加到 m_accounts 里.
-	m_accouts.push_back(&accounts);
-
-	BOOST_SCOPE_EXIT(&m_accouts, &accounts, flag_quit)
-	{
-		using namespace boost::lambda;
-		// 如果 flag_quit是真的，那么 this 其实是不能访问的，因为已经析构了。
-		if (!*flag_quit)
-		{
-			std::remove(m_accouts.begin(), m_accouts.end(), &accounts);
-		}
-	}BOOST_SCOPE_EXIT_END
-
-	// 登录执行完成！
-	// 开始读取消息
-	for(;;)
-	{
-		// 执行登录!
-		flag_check();
-		do{
-			accounts.async_login(yield[ec]);
-			flag_check();
-			if (accounts.is_error_fatal(ec))
-			{
-				// 帐号有严重的问题，只能删除这一帐号，没有别的选择
-				return;
-			}
-		} while (ec);
-
-		do
-		{
-			// 等待并解析协议的消息
-			boost::property_tree::ptree message = accounts.async_recv_message(yield[ec]);
-			flag_check();
-
-			// 调用 broadcast message, 如果没要求退出的话
-			if (!ec)
-				on_message(message);
-			// 掉线了？重登录！
-		// 只有遇到了必须要重登录的错误才重登录
-		// 一时半会的网络错误可没事，再获取一下就可以了
-		} while (!accounts.is_error_fatal(ec));
-	}
-}
-
-void avchannel::handle_message(std::string protocol, std::string sender_room, msg_sender,
-	std::vector<avbotmsg> msg, send_avbot_message_t send_avbot_message, boost::asio::yield_context yield_context)
-{
-	bool not_to_this = true;
-	// 看是否属于自己频道
-	for (auto room : m_rooms)
-	{
-		if (room.first == protocol && room.second == sender_room)
-		{
-			not_to_this = false;
-			break;
-		}
-	}
-
-	if (not_to_this)
-		return ;
-
-	// 开始处理本频道消息
-	for (auto room : m_rooms)
-	{
-		// 避免重复发送给自己
-		if (room.first == protocol && room.second == sender_room)
-			continue;
-
-		// TODO 开始处理消息
-		avbotmsg preamble;
-		msg.insert(std::begin(msg), preamble);
-
-		send_avbot_message(room.first, room.second, msg, yield_context);
-	}
-}

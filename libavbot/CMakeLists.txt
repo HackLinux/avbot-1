@@ -4,8 +4,7 @@ project(libavbot)
 
 add_library(libavbot STATIC
 	avbot.hpp avbot.cpp
-	avbot_account_and_message_loop.cpp avbot_account_and_message_loop.hpp
-	avbot_accounts.hpp
+	avchannel.hpp avchannel.cpp
 )
 
 target_include_directories(libavbot PUBLIC
