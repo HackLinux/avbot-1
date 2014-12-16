@@ -54,7 +54,7 @@ public:
 	typedef boost::signals2::signal<void(channel_identifier, avbotmsg) > on_message_type;
 
 	// 用了传入一个 url 生成器，这样把 qq 的消息里的图片地址转换为 vps 上跑的 http 服务的地址。
-	std::function<std::string(avbotmsg)> m_urlformater;
+	std::function<std::string(std::string)> m_urlformater;
 
 	// 调用此函数保存图片
 	std::function<void(std::string digestname, std::string data)> m_image_saver;
@@ -118,4 +118,6 @@ public:
 
 	// used by internal visitor
 	std::string format_message_for_qq(const avbotmsg& message);
+	std::string format_message_for_textIM(const avbotmsg& message);
+	std::vector<avim_msg> format_message_for_avim(const avbotmsg& message);
 };

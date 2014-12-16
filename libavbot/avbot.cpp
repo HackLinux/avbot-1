@@ -507,7 +507,28 @@ void avbot::send_avbot_message(channel_identifier id, avbotmsg msg, boost::asio:
 
 std::string avbot::format_message_for_qq(const avbotmsg& message )
 {
-// 	std::string linermessage;
+	std::string linermessage;
+	// 这个消息是要格式化后给 qq 发送的, 因此 ...
+
+	linermessage += message.sender.preamble;
+
+	linermessage += " ";
+
+	for (const avbotmsg_segment& seg : message.msgs)
+	{
+		if (seg.type == "text")
+		{
+			linermessage += boost::any_cast<std::string>(seg.content);
+		}
+		else if(seg.type == "image")
+		{
+			auto img_seg = boost::any_cast<avbotmsg_image_segment>(seg.content);
+			linermessage += " ";
+			linermessage += " 发送了个图片, 但是 bot 暂不支持转发到qq......";
+			linermessage += " ";
+		}
+	}
+
 // 	// 首先是根据 nick 格式化
 // 	if ( message.get<std::string>("protocol") != "mail")
 // 	{
@@ -542,7 +563,80 @@ std::string avbot::format_message_for_qq(const avbotmsg& message )
 // 		);
 //  	}
 //
-//  	return linermessage;
+	return linermessage;
+}
+
+std::string avbot::format_message_for_textIM(const avbotmsg& message)
+{
+	std::string linermessage;
+	// 这个消息是要格式化后给 qq 发送的, 因此 ...
+
+	linermessage += message.sender.preamble;
+
+	linermessage += " ";
+
+	for (const avbotmsg_segment& seg : message.msgs)
+	{
+		if (seg.type == "text")
+		{
+			linermessage += boost::any_cast<std::string>(seg.content);
+		}
+		else if(seg.type == "image")
+		{
+			auto img_seg = boost::any_cast<avbotmsg_image_segment>(seg.content);
+
+			if (!img_seg.cname.empty())
+			{
+				if (m_urlformater)
+					linermessage += m_urlformater(img_seg.cname);
+				else
+					linermessage += "发送了个图片, 但是没配置 http 服务, 所以没法转 URL 啦!";
+			}
+			else
+			{
+				linermessage += " ";
+				linermessage += " 发送了个图片, 但是 bot 暂不支持......";
+				linermessage += " ";
+			}
+		}
+	}
+	return linermessage;
+}
+
+std::vector<avim_msg> avbot::format_message_for_avim(const avbotmsg& message)
+{
+	std::vector<avim_msg> ret;
+
+	avim_msg msg_segment;
+
+	msg_segment.text = message.sender.preamble;
+
+	ret.push_back(std::move(msg_segment));
+
+
+	for (const avbotmsg_segment& seg : message.msgs)
+	{
+		if (seg.type == "text")
+		{
+			msg_segment.text = boost::any_cast<std::string>(seg.content);
+			ret.push_back(std::move(msg_segment));
+		}
+		else if(seg.type == "image")
+		{
+			auto img_seg = boost::any_cast<avbotmsg_image_segment>(seg.content);
+
+			if (img_seg.image_data.empty())
+			{
+				msg_segment.image = img_seg.image_data;
+			}
+			else
+			{
+				msg_segment.text = "<发了个图片, 但是没获取到>";
+			}
+			ret.push_back(std::move(msg_segment));
+		}
+	}
+	return ret;
 }
 
 std::string avbot::image_subdir_name( std::string cface )
