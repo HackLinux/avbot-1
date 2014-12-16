@@ -216,7 +216,7 @@ void avbot::callback_on_qq_group_message(std::shared_ptr<webqq::webqq> qq_accoun
 
 						// 写入图片
 						if (m_image_saver)
-							m_image_saver(qqmsg.cface, img_data);
+							m_image_saver(qqmsg.cface.name, img_data);
 					}
 				}
 
