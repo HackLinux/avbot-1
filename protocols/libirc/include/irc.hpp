@@ -1,4 +1,4 @@
-/*
+﻿/*
  * <one line to give the program's name and a brief idea of what it does.>
  * Copyright (C) 2012 InvXp <invidentssc@hotmail.com>
  *
@@ -55,6 +55,8 @@ public:
 	~client();
 
 	void on_privmsg_message(const privmsg_cb &cb);
+
+	void on_new_room(std::function<void(std::string)> cb);
 
 	void join(const std::string& ch, const std::string &pwd = "");
 

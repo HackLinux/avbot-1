@@ -118,6 +118,8 @@ private:
 	void callback_on_qq_group_found(std::shared_ptr<webqq::webqq>, webqq::qqGroup_ptr);
 	void callback_on_qq_group_newbee(std::shared_ptr<webqq::webqq>, webqq::qqGroup_ptr, webqq::qqBuddy_ptr);
 
+	void callback_on_irc_room_joined(std::shared_ptr<irc::client>, std::string);
+
 private:
 	void forward_message(const channel_identifier& i, const avbotmsg& m);
 public:

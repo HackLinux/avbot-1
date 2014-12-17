@@ -155,6 +155,7 @@ public:
 
 	boost::asio::streambuf response_;
 	boost::signals2::signal<void(irc_msg)> cb_;
+	boost::signals2::signal<void(std::string)> on_new_room_cb;
 
 	std::vector<std::string> join_queue_;
 
@@ -510,6 +511,11 @@ client::~client()
 void client::on_privmsg_message(const privmsg_cb& cb)
 {
 	impl->on_privmsg_message(cb);
+}
+
+void client::on_new_room(std::function<void(std::string)> cb)
+{
+	impl->on_new_room_cb.connect(cb);
 }
 
 void client::join(const std::string& ch, const std::string& pwd)

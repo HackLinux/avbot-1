@@ -376,6 +376,14 @@ void avbot::callback_on_qq_group_newbee(std::shared_ptr<webqq::webqq>, webqq::qq
 	on_message(channel_id, message);
 }
 
+void avbot::callback_on_irc_room_joined(std::shared_ptr<irc::client> irc_account, std::string roomname)
+{
+	channel_identifier channel_id;
+	channel_id.protocol = "irc";
+	channel_id.room = roomname;
+	m_account_mapping.insert(std::make_pair(channel_id, irc_account));
+}
+
 std::shared_ptr<webqq::webqq> avbot::add_qq_account(std::string qqnumber, std::string password, avbot::need_verify_image cb, bool no_persistent_db)
 {
 	auto qq_account = std::make_shared<webqq::webqq>(std::ref(get_io_service()), qqnumber, password, no_persistent_db);
@@ -417,6 +425,8 @@ std::shared_ptr<irc::client> avbot::add_irc_account( std::string nick, std::stri
 	auto irc_account = std::make_shared<irc::client>(std::ref(m_io_service),nick, password, server);
 
 	irc_account->on_privmsg_message(std::bind(&avbot::callback_on_irc_message, this, irc_account, std::placeholders::_1));
+	irc_account->on_new_room(std::bind(&avbot::callback_on_irc_room_joined, this, irc_account, std::placeholders::_1));
+
 	m_irc_accounts.push_back(irc_account);
 	return irc_account;
 }
