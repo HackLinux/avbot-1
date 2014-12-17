@@ -72,6 +72,8 @@ public:
 		pwd.empty() ? msg = "JOIN " + ch : msg = "JOIN " + ch + " " + pwd;
 
 		join_queue_.push_back(msg);
+
+		on_new_room_cb(ch);
 	}
 
 	void chat(const std::string whom, const std::string msg)
