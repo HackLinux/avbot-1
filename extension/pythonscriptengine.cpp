@@ -1,4 +1,4 @@
-
+﻿
 #include "pythonscriptengine.hpp"
 #include "boost/json_parser_write.hpp"
 #include <ctime>
@@ -55,7 +55,8 @@ public:
 		last_write_time_ = fs::last_write_time(fs::path("./avbot.py"));
 	}
 
-	void operator()(const boost::property_tree::ptree &msg) {
+	void operator()(channel_identifier cid, avbotmsg msg, send_avchannel_message_t sender, boost::asio::yield_context yield_context)
+	{
 		try {
 			boost::system::error_code ignore_ec;
 			fs::path script_file("./avbot.py");
@@ -68,7 +69,7 @@ public:
 			if (disable_python)
 				return;
 			std::stringstream ss;
-			boost::property_tree::json_parser::write_json(ss, msg);
+			boost::property_tree::json_parser::write_json(ss, av_msg_make_json(cid, msg));
 			pyhandler_.attr("on_message")(ss.str());
 		}
 		catch (...) {

@@ -104,11 +104,11 @@ void callluascript::call_lua( std::string jsondata ) const
 	}
 }
 
-void callluascript::operator()( boost::property_tree::ptree message ) const
+void callluascript::operator()(channel_identifier cid, avbotmsg msg, send_avchannel_message_t sender, boost::asio::yield_context yield_context) const
 {
 	load_lua();
 	std::stringstream jsondata;
-	boost::property_tree::json_parser::write_json(jsondata, message);
+	boost::property_tree::json_parser::write_json(jsondata, av_msg_make_json(cid, msg));
 
 	call_lua(jsondata.str());
 }
@@ -160,7 +160,7 @@ static bool test_lua51_dll()
 	return false;
 }
 
-#else 
+#else
 
 static bool test_lua51_dll()
 {
@@ -169,7 +169,7 @@ static bool test_lua51_dll()
 
 #endif // _MSC_VER
 
-static void dumy_func(boost::property_tree::ptree message)
+static void dumy_func(channel_identifier cid, avbotmsg msg, send_avchannel_message_t sender, boost::asio::yield_context yield_context)
 {
 }
 

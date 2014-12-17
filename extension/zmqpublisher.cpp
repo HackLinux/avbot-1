@@ -1,4 +1,4 @@
-#include <boost/asio.hpp>
+﻿#include <boost/asio.hpp>
 #include <boost/property_tree/ptree.hpp>
 #include <boost/random.hpp>
 #include <boost/function.hpp>
@@ -75,10 +75,10 @@ public:
 	{
 	}
 
-	void operator()(boost::property_tree::ptree msg)
+	void operator()(channel_identifier cid, avbotmsg msg, send_avchannel_message_t sender, boost::asio::yield_context yield_context)
 	{
 		std::stringstream ss;
-		boost::property_tree::json_parser::write_json(ss, msg);
+		boost::property_tree::json_parser::write_json(ss, av_msg_make_json(cid, msg));
 		publisher_->send(channel_name_, ss.str());
 	}
 

@@ -6,6 +6,7 @@
 #include <boost/any.hpp>
 #include <boost/asio/spawn.hpp>
 #include <boost/signals2.hpp>
+#include <boost/property_tree/ptree.hpp>
 
 struct avbotmsg_image_segment
 {
@@ -170,3 +171,9 @@ private:
 	std::string m_name;
 };
 
+static inline boost::property_tree::ptree av_msg_make_json(channel_identifier ci, avbotmsg msg)
+{
+	boost::property_tree::ptree ptree;
+	// TODO
+	return ptree;
+}

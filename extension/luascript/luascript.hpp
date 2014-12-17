@@ -1,4 +1,4 @@
-
+﻿
 #pragma once
 
 #include <algorithm>
@@ -32,7 +32,7 @@ public:
 	callluascript(boost::asio::io_service &_io_service, boost::function<void(std::string)> sender);
 	~callluascript();
 	// on_message 回调.
-	void operator()( boost::property_tree::ptree message ) const;
+	void operator()(channel_identifier cid, avbotmsg msg, send_avchannel_message_t sender, boost::asio::yield_context yield_context) const;
 };
 
 avbot_extension make_luascript(std::string channel_name, boost::asio::io_service &_io_service, boost::function<void(std::string)> sender);
