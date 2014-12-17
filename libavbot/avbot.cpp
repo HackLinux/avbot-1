@@ -376,6 +376,14 @@ void avbot::callback_on_qq_group_newbee(std::shared_ptr<webqq::webqq>, webqq::qq
 	on_message(channel_id, message);
 }
 
+void avbot::callback_on_xmpp_room_joined(std::shared_ptr<xmpp> xmpp_account, std::string roomname)
+{
+	channel_identifier channel_id;
+	channel_id.protocol = "xmpp";
+	channel_id.room = roomname;
+	m_account_mapping.insert(std::make_pair(channel_id, xmpp_account));
+}
+
 void avbot::callback_on_irc_room_joined(std::shared_ptr<irc::client> irc_account, std::string roomname)
 {
 	channel_identifier channel_id;
@@ -435,6 +443,7 @@ std::shared_ptr<xmpp> avbot::add_xmpp_account( std::string user, std::string pas
 {
 	auto xmpp_account = std::make_shared<xmpp>(std::ref(m_io_service), user, password, server, nick);
 	xmpp_account->on_room_message(std::bind(&avbot::callback_on_xmpp_group_message, this,xmpp_account, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+	xmpp_account->on_room_joined(std::bind(&avbot::callback_on_xmpp_room_joined, this, xmpp_account, std::placeholders::_1));
 	m_xmpp_accounts.push_back(xmpp_account);
 	return xmpp_account;
 }

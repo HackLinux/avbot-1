@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright (C) 2013  微蔡 <microcai@fedoraproject.org>
  *
  * This program is free software: you can redistribute it and/or modify
@@ -48,6 +48,12 @@ void xmpp::on_room_message(std::function<void (std::string xmpproom, std::string
 	if (impl)
 		impl->on_room_message(cb);
 }
+
+void xmpp::on_room_joined(std::function<void(std::string)> cb)
+{
+	impl->on_room_joined(cb);
+}
+
 
 void xmpp::send_room_message(std::string xmpproom, std::string message)
 {

@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright (C) 2013  微蔡 <microcai@fedoraproject.org>
  *
  * This program is free software: you can redistribute it and/or modify
@@ -34,6 +34,7 @@ public:
 	void join( std::string roomjid );
 	~xmpp();
 	void on_room_message( std::function<void ( std::string xmpproom, std::string who, std::string message )> cb );
+	void on_room_joined(std::function<void(std::string)>);
 	void send_room_message( std::string xmpproom, std::string message );
 	boost::asio::io_service& get_ioservice();
 private:

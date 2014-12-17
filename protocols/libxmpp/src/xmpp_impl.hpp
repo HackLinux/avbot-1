@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright (C) 2012  微蔡 <microcai@fedoraproject.org>
  *
  * This program is free software: you can redistribute it and/or modify
@@ -88,6 +88,7 @@ public:
 	xmpp( boost::asio::io_service & asio, std::string xmppuser, std::string xmpppasswd, std::string xmppserver, std::string xmppnick );
 	void join( std::string roomjid );
 	void on_room_message( std::function<void ( std::string xmpproom, std::string who, std::string message )> cb );
+	void on_room_joined(std::function<void(std::string)> cb);
 	void send_room_message( std::string xmpproom, std::string message );
 	boost::asio::io_service& get_ioservice() {
 		return io_service;
@@ -123,6 +124,8 @@ private:
 	boost::signals2::signal<
 		void (std::string xmpproom, std::string who, std::string message)
 	> m_sig_room_message;
+
+	boost::signals2::signal<void (std::string)> m_sig_room_joined;
 
 	boost::asio::io_service::strand xmpp_stand;
 	xmpp_asio_connector * current_connector;

@@ -265,11 +265,17 @@ void xmpp::join( std::string roomjid )
 	gloox::JID roomnick( roomjid + "/" + m_xmppnick ); //"avplayer@im.linuxapp.org";
 	std::shared_ptr<gloox::MUCRoom> room( new  gloox::MUCRoom( &m_client, roomnick, this ) );
 	m_rooms.push_back( room );
+	m_sig_room_joined(roomjid);
 }
 
 void xmpp::on_room_message( std::function<void ( std::string xmpproom, std::string who, std::string message )> cb )
 {
 	m_sig_room_message.connect( cb );
+}
+
+void xmpp::on_room_joined(std::function<void(std::string)> cb)
+{
+	m_sig_room_joined.connect( cb );
 }
 
 void xmpp::send_room_message( std::string xmpproom, std::string message )
