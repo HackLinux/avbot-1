@@ -536,7 +536,8 @@ void avbot::send_avbot_message(channel_identifier id, avbotmsg msg, boost::asio:
 	send_avbot_message_visitor<BOOST_ASIO_HANDLER_TYPE(boost::asio::yield_context, void(boost::system::error_code))>
 		visitor(*this, id, msg, init.handler);
 
-	boost::apply_visitor(visitor, m_account_mapping[id]);
+	if (m_account_mapping.find(id) != m_account_mapping.end())
+		boost::apply_visitor(visitor, m_account_mapping[id]);
 
 	return init.result.get();
 }
