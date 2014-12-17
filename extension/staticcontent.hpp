@@ -1,4 +1,4 @@
 
 #include "extension.hpp"
 
-avbot_extension make_static_content(boost::asio::io_service& io, std::string channel_name, boost::function<void(std::string)> sender);
+avbot_extension make_static_content(boost::asio::io_service& io, std::string channel_name);

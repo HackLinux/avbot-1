@@ -163,7 +163,7 @@ struct mail_recoder
 
 	// 由 avbot 的 on_message 调用.
 	//channel_identifier, avbotmsg, send_avbot_message_t, boost::asio::yield_context
-	void operator()(channel_identifier cid, avbotmsg message, send_avbot_message_t, boost::asio::yield_context, const boost::signals2::connection & con)
+	void operator()(channel_identifier cid, avbotmsg message, send_avchannel_message_t, boost::asio::yield_context, const boost::signals2::connection & con)
 	{
 		static boost::regex ex(".qqbot mail subject \"?(.*)\"?");
 		boost::cmatch what;

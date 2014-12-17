@@ -1,4 +1,4 @@
-#include <boost/asio.hpp>
+﻿#include <boost/asio.hpp>
 #include <boost/property_tree/ptree.hpp>
 #include <boost/random.hpp>
 #include <boost/function.hpp>
@@ -13,14 +13,14 @@ namespace fs = boost::filesystem;
 
 struct StaticContent
 {
-	StaticContent(boost::asio::io_service& io, boost::function<void(std::string)> sender);
+	StaticContent(boost::asio::io_service& io);
 
 	void operator()(boost::system::error_code ec) {}
 
-	void operator()(const boost::property_tree::ptree& pt);
+	void operator()(channel_identifier cid, avbotmsg msg, send_avchannel_message_t sender, boost::asio::yield_context yield_context);
 
 	boost::asio::io_service& io_;
-	boost::function<void(std::string)> sender_;
+
 	typedef boost::regex Keywords;
 	typedef std::vector<std::string> Messages;
 	std::map<Keywords, Messages> static_contents_;
@@ -30,9 +30,8 @@ struct StaticContent
 
 };
 
-StaticContent::StaticContent(boost::asio::io_service& io, boost::function<void(std::string)> sender)
+StaticContent::StaticContent(boost::asio::io_service& io)
 	: io_(io)
-	, sender_(sender)
 	, d_(0, 10000)
 {
 	using namespace boost::property_tree::xml_parser;
@@ -55,23 +54,23 @@ StaticContent::StaticContent(boost::asio::io_service& io, boost::function<void(s
 	}
 }
 
-void StaticContent::operator()(const boost::property_tree::ptree& pt)
+void StaticContent::operator()(channel_identifier cid, avbotmsg msg, send_avchannel_message_t sender, boost::asio::yield_context yield_context)
 {
-	std::string text = pt.get<std::string>("message.text");
+	std::string text = msg.to_plain_text();
 
 	BOOST_FOREACH(const auto & item,  static_contents_)
 	{
 		if(boost::regex_search(text, item.first))
 		{
-			sender_(item.second[d_(g_) % item.second.size()]);
+			sender(item.second[d_(g_) % item.second.size()], yield_context);
 		}
 	}
 }
 
-avbot_extension make_static_content(boost::asio::io_service& io, std::string channel_name, boost::function<void(std::string)> sender)
+avbot_extension make_static_content(boost::asio::io_service& io, std::string channel_name)
 {
 	return avbot_extension(
 		channel_name,
-		StaticContent(io, sender)
+		StaticContent(io)
 	);
 }

@@ -1,4 +1,4 @@
-
+﻿
 #pragma once
 
 #include <string>
@@ -16,20 +16,25 @@ namespace detail{
 class avbotexteison_interface
 {
 public:
-	virtual void operator()(const boost::property_tree::ptree & msg) = 0;
+	virtual void operator()(channel_identifier cid, avbotmsg msg, send_avchannel_message_t sender, boost::asio::yield_context yield_context) = 0;
 };
 
 template<class ExtensionType>
 class avbotexteison_adapter : public avbotexteison_interface
 {
 	ExtensionType m_pextension;
-	void operator()(const boost::property_tree::ptree & msg)
+	void operator()(channel_identifier cid, avbotmsg msg, send_avchannel_message_t sender, boost::asio::yield_context yield_context)
 	{
-		(m_pextension)(msg);
+		(m_pextension)(cid, msg, sender, yield_context);
 	}
 
 public:
 	avbotexteison_adapter(const ExtensionType & obj)
+		: m_pextension(obj)
+	{
+	}
+
+	avbotexteison_adapter(ExtensionType && obj)
 		: m_pextension(obj)
 	{
 	}
@@ -90,19 +95,12 @@ public:
 		return *this;
 	}
 
-	void operator()(channel_identifier cid, avbotmsg msg)
+	void operator()(channel_identifier cid, avbotmsg msg, send_avchannel_message_t sender, boost::asio::yield_context yield_context)
 	{
-		try{
-
-			// 调用实际的函数
-			// (*m_exteison_obj)(msg);
-		}catch (const boost::property_tree::ptree_error&)
-		{
-            // error access the ptree
-            // ignore it
-        }
+		// 调用实际的函数
+		(*m_exteison_obj)(cid, msg, sender, yield_context);
 	}
 	typedef void result_type;
 };
 
-void new_channel_set_extension(boost::asio::io_service &io_service, avbot & mybot , std::string channel_name);
+void new_channel_set_extension(avbot& mybot, avchannel& channel, std::string channel_name);

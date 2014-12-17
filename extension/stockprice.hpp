@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright (C) 2013  microcai <microcai@fedoraproject.org>
  *
  * This program is free software: you can redistribute it and/or modify
@@ -389,9 +389,9 @@ public:
 	{}
 
 	void operator()(const boost::system::error_code &error);
-	void operator()(boost::property_tree::ptree msg)
+	void operator()(channel_identifier cid, avbotmsg msg, send_avchannel_message_t sender, boost::asio::yield_context yield_context)
 	{
-		std::string textmsg = boost::trim_copy(msg.get<std::string>("message.text"));
+		std::string textmsg = msg.to_plain_text();
 
 		boost::cmatch what;
 		if (boost::regex_search(textmsg.c_str(), what, boost::regex(".qqbot 股票(.*)")))
@@ -408,7 +408,7 @@ template<class MsgSender>
 stockprice<typename boost::remove_reference<MsgSender>::type>
 make_stockprice(boost::asio::io_service &io, MsgSender sender)
 {
-	return  stockprice<typename boost::remove_reference<MsgSender>::type>(io,sender);
+	return  stockprice<typename boost::remove_reference<MsgSender>::type>(io, sender);
 }
 
 #endif // __STOCK_HPP__

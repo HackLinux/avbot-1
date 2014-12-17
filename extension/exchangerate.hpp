@@ -195,9 +195,9 @@ public:
 
 	void operator()(const boost::system::error_code& error);
 
-	void operator()(boost::property_tree::ptree msg)
+	void operator()(channel_identifier cid, avbotmsg msg, send_avchannel_message_t sender, boost::asio::yield_context yield_context)
 	{
-		std::string textmsg = boost::trim_copy( msg.get<std::string>( "message.text" ) );
+		std::string textmsg = msg.to_plain_text();
 
 		// 组合正则表达式 str == ".qqbot (美元|欧元|日元|......)(汇率)?"
 		std::string str = ".qqbot (";

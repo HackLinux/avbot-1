@@ -219,7 +219,7 @@ static std::string imgurlformater(std::string cface, std::string baseurl)
 	);
 }
 
-static void avbot_log(channel_identifier id, avbotmsg message, avbot & mybot, soci::session & db)
+static void avbot_log(std::string channel_name, channel_identifier id, avbotmsg message, soci::session & db)
 {
 	std::string linemessage;
 
@@ -269,36 +269,28 @@ static void avbot_log(channel_identifier id, avbotmsg message, avbot & mybot, so
 				);
 			}
 		}
-		std::string channel_name ;// TODO = message.get<std::string>("channel", "");
+
 		if(protocol != "rpc")
 			nick = message.sender.nick;
 
-		if (channel_name.empty())
+		long rowid = 0;
 		{
-			// 全部记录?
-			// TODO
+		// log to database
+		db << "insert into avlog (date, protocol, channel, nick, message)"
+			" values (:date, :protocol, :channel, :nick, :message)"
+			, soci::use(curtime)
+			, soci::use(protocol)
+			, soci::use(channel_name)
+			, soci::use(nick)
+			, soci::use(textonly);
 		}
-		else
-		{
-			long rowid = 0;
-			{
-			// log to database
-			db << "insert into avlog (date, protocol, channel, nick, message)"
-				" values (:date, :protocol, :channel, :nick, :message)"
-				, soci::use(curtime)
-				, soci::use(protocol)
-				, soci::use(channel_name)
-				, soci::use(nick)
-				, soci::use(textonly);
-			}
 
-			if (db.get_backend_name() == "sqlite3")
-			rowid =  sqlite_api::sqlite3_last_insert_rowid(
-				dynamic_cast<soci::sqlite3_session_backend*>(db.get_backend())->conn_
-			);
+		if (db.get_backend_name() == "sqlite3")
+		rowid =  sqlite_api::sqlite3_last_insert_rowid(
+			dynamic_cast<soci::sqlite3_session_backend*>(db.get_backend())->conn_
+		);
 
-			logfile.add_log(channel_name, linemessage, rowid);
-		}
+		logfile.add_log(channel_name, linemessage, rowid);
 	}
 	else
 	{
@@ -703,7 +695,9 @@ int main(int argc, char * argv[])
 				// 好, 配置 avchannel !
 				//mybot.add_channel();
 
-				auto channel = std::make_shared<avchannel>();
+				std::string channel_name = subdirs.string();
+
+				auto channel = std::make_shared<avchannel>(channel_name);
 
 				// 读取 map.txt 文件
 				std::ifstream map((subdirs / "map.txt").string().c_str());
@@ -724,16 +718,23 @@ int main(int argc, char * argv[])
 						break;
                 }
 
-				mybot.add_channel(subdirs.filename().string(), channel);
+
+
+				mybot.add_channel(channel_name, channel);
+
+				// 记录到日志.
+				channel->handle_extra_message.connect(
+					std::bind(avbot_log, channel_name, std::placeholders::_1, std::placeholders::_2, std::ref(avlogdb))
+				);
+
+				// 开启 extension
+				new_channel_set_extension(mybot, *channel, channel_name);
 			}
 		}
 
 	}
 
-	// 记录到日志.
-	mybot.on_message.connect(
-		std::bind(avbot_log, std::placeholders::_1, std::placeholders::_2, std::ref(mybot), std::ref(avlogdb))
-	);
+
 	// 开启 bot 控制.
 	mybot.on_message.connect(
 		std::bind(my_on_bot_command, std::placeholders::_1, std::placeholders::_2, std::ref(mybot))

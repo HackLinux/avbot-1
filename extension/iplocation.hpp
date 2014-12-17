@@ -14,6 +14,7 @@
 
 #include "boost/stringencodings.hpp"
 #include "qqwry/ipdb.hpp"
+#include <libavbot/avchannel.hpp>
 
 namespace iplocationdetail{
 
@@ -175,9 +176,9 @@ template<typename MsgSender>
 class iplocation
 {
 public:
-	void operator()(boost::property_tree::ptree msg)
+	void operator()(channel_identifier cid, avbotmsg msg, send_avchannel_message_t sender, boost::asio::yield_context yield_context)
 	{
-		std::string textmsg = boost::trim_copy(msg.get<std::string>("message.text"));
+		std::string textmsg = msg.to_plain_text();
 
 		in_addr ipaddr;
 

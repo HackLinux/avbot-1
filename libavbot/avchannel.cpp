@@ -1,6 +1,11 @@
 ﻿
 #include "avchannel.hpp"
 
+avchannel::avchannel(std::string name)
+	: m_name(std::move(name))
+{
+}
+
 bool avchannel::can_handle(channel_identifier channel_id) const
 {
     // 看是否属于自己频道
@@ -20,7 +25,12 @@ void avchannel::handle_message(channel_identifier channel_id, avbotmsg msg, send
         send_avbot_message(room, msg, yield_context);
     }
 
-    handle_extra_message(channel_id, msg, send_avbot_message, yield_context);
+    auto send_avchannel_message = [this, send_avbot_message](avbotmsg msg, boost::asio::yield_context yield_context)
+	{
+		broadcast_message(msg, send_avbot_message, yield_context);
+	};
+
+    handle_extra_message(channel_id, msg, send_avchannel_message, yield_context);
 }
 
 void avchannel::broadcast_message(avbotmsg msg, send_avbot_message_t send_avbot_message, boost::asio::yield_context yield_context)

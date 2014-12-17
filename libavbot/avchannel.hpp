@@ -70,6 +70,19 @@ struct avbotmsg
 		: avbotmsg(std::string(str))
 	{
 	}
+
+	std::string to_plain_text() const
+	{
+		std::string ret;
+		for (const avbotmsg_segment& s : msgs)
+		{
+			if (s.type == "text")
+			{
+				ret += boost::any_cast<std::string>(s.content);
+			}
+		}
+		return ret;
+	}
 };
 
 struct channel_identifier
@@ -103,11 +116,14 @@ inline bool operator < (const channel_identifier& a, const channel_identifier& b
 }
 
 typedef std::function<void(channel_identifier, avbotmsg, boost::asio::yield_context)> send_avbot_message_t;
+typedef std::function<void(avbotmsg, boost::asio::yield_context)> send_avchannel_message_t;
 
 class avchannel // : std::enable_shared_from_this<avchannel>
 {
 public:
-	typedef boost::signals2::signal<void(channel_identifier, avbotmsg, send_avbot_message_t, boost::asio::yield_context)> handle_extra_message_type;
+	typedef boost::signals2::signal<void(channel_identifier, avbotmsg, send_avchannel_message_t, boost::asio::yield_context)> handle_extra_message_type;
+
+	avchannel(std::string);
 
 	// 信号, 用于处理额外的消息!
 	handle_extra_message_type handle_extra_message;

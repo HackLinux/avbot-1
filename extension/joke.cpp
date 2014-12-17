@@ -161,12 +161,12 @@ static bool can_joke(std::string msg)
 	return false;
 }
 
-void joke::operator()( boost::property_tree::ptree msg )
+void joke::operator()(channel_identifier cid, avbotmsg msg, send_avchannel_message_t sender, boost::asio::yield_context yield_context)
 {
 	try
 	{
 		// do joke control here
-		std::string textmsg = boost::trim_copy( msg.get<std::string>( "message.text" ) );
+		std::string textmsg = boost::trim_copy(msg.to_plain_text());
 
 		if( textmsg ==  ".qqbot joke off" )
 		{

@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright (C) 2013  microcai <microcai@fedoraproject.org>
  *
  * This program is free software: you can redistribute it and/or modify
@@ -70,7 +70,7 @@ public:
 	}
 
 	void operator()(const boost::system::error_code& error);
-	void operator()(boost::property_tree::ptree);
+	void operator()(channel_identifier cid, avbotmsg msg, send_avchannel_message_t sender, boost::asio::yield_context yield_context);
 	void operator()(const boost::system::error_code& error, std::string joke);
 };
 

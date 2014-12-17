@@ -1,4 +1,4 @@
-
+﻿
 #include <boost/asio.hpp>
 #ifdef HAVE_ZLIB
 #include <zlib.h>
@@ -48,72 +48,74 @@ static void sender(avbot & mybot, std::string channel_name, std::string txt, boo
 	}
 }
 
-void new_channel_set_extension(boost::asio::io_service &io_service, avbot & mybot , std::string channel_name)
+void new_channel_set_extension(avbot& mybot, avchannel& channel, std::string channel_name)
 {
-#if 0
-	mybot.on_message.connect(
+	auto & io_service = mybot.get_io_service();
+
+	channel.handle_extra_message.connect(
 		avbot_extension(
 			channel_name,
 			joke(
 				io_service,
-				io_service.wrap(boost::bind(sender, boost::ref(mybot), channel_name, _1, 0)),
+				io_service.wrap(std::bind(sender, std::ref(mybot), channel_name, std::placeholders::_1, 0)),
 				channel_name,
 				boost::posix_time::seconds(600)
 			)
 		)
 	);
 
-	mybot.on_message.connect(
+	channel.handle_extra_message.connect(
 		avbot_extension(
 			channel_name,
-			urlpreview(io_service,
-				io_service.wrap(boost::bind(sender, boost::ref(mybot), channel_name, _1, 1))
+			urlpreview(
+				io_service,
+				io_service.wrap(std::bind(sender, std::ref(mybot), channel_name, std::placeholders::_1, 1))
 			)
 		)
 	);
 #ifdef ENABLE_LUA
-	mybot.on_message.connect(
+	channel.handle_extra_message.connect(
 		make_luascript(
 			channel_name,
 			io_service,
-			io_service.wrap(boost::bind(sender, boost::ref(mybot), channel_name, _1, 1))
+			io_service.wrap(std::bind(sender, std::ref(mybot), channel_name, std::placeholders::_1, 1))
 		)
 	);
 #endif
-	mybot.on_message.connect (
+	channel.handle_extra_message.connect(
 		avbot_extension(
 			channel_name,
 			::bulletin(
 				io_service,
-				io_service.wrap(boost::bind(sender, boost::ref(mybot), channel_name, _1, 1)),
+				io_service.wrap(std::bind(sender, std::ref(mybot), channel_name, std::placeholders::_1, 1)),
 				channel_name
 			)
 		)
 	);
-	mybot.on_message.connect (
+	channel.handle_extra_message.connect(
 		avbot_extension(
 			channel_name,
 			make_metalprice(
 				io_service,
-				io_service.wrap(boost::bind(sender, boost::ref(mybot), channel_name, _1, 1))
+				io_service.wrap(std::bind(sender, std::ref(mybot), channel_name, std::placeholders::_1, 1))
 			)
 		)
 	);
-	mybot.on_message.connect (
+	channel.handle_extra_message.connect(
 		avbot_extension(
 			channel_name,
 			make_stockprice(
 				io_service,
-				io_service.wrap(boost::bind(sender, boost::ref(mybot), channel_name, _1, 1))
+				io_service.wrap(std::bind(sender, std::ref(mybot), channel_name, std::placeholders::_1, 1))
 			)
 		)
 	);
-	mybot.on_message.connect (
+	channel.handle_extra_message.connect(
 		avbot_extension(
 			channel_name,
 			::exchangerate(
 				io_service,
-				io_service.wrap(boost::bind(sender, boost::ref(mybot), channel_name, _1, 1))
+				io_service.wrap(std::bind(sender, std::ref(mybot), channel_name, std::placeholders::_1, 1))
 			)
 		)
 	);
@@ -129,54 +131,48 @@ void new_channel_set_extension(boost::asio::io_service &io_service, avbot & mybo
 		ipdb_mgr->search_and_build_db();
 	}
 
-	mybot.on_message.connect(
+	channel.handle_extra_message.connect(
 		avbot_extension(
 			channel_name,
 			make_iplocation(
 				io_service,
-				io_service.wrap(boost::bind(sender, boost::ref(mybot), channel_name, _1, 0)),
+				io_service.wrap(std::bind(sender, std::ref(mybot), channel_name, std::placeholders::_1, 1)),
 				ipdb_mgr
 			)
 		)
 	);
 
-	mybot.on_message.connect(
-		make_static_content(
-			io_service,
-			channel_name,
-			io_service.wrap(boost::bind(sender, boost::ref(mybot), channel_name, _1, 0))
-		)
+	channel.handle_extra_message.connect(
+		make_static_content(io_service, channel_name)
 	);
 
 #ifdef ENABLE_PYTHON
-	mybot.on_message.connect(
+	channel.handle_extra_message.connect(
 		make_python_script_engine(
 			io_service,
 			channel_name,
-			io_service.wrap(boost::bind(sender, boost::ref(mybot), channel_name, _1, 0))
+			io_service.wrap(std::bind(sender, std::ref(mybot), channel_name, std::placeholders::_1, 1))
 		)
 	);
 #endif
 
 #ifdef ENABLE_ZMQ
-	mybot.on_message.connect(
+	channel.handle_extra_message.connect(
 		make_zmq_publisher(
 			io_service,
 			channel_name,
-			io_service.wrap(boost::bind(sender, boost::ref(mybot), channel_name, _1, 0))
+			io_service.wrap(std::bind(sender, std::ref(mybot), channel_name, std::placeholders::_1, 1))
 		)
 	);
 #endif
 
 #ifdef _WIN32
-	mybot.on_message.connect(
+	channel.handle_extra_message.connect(
 		make_dllextention(
 			io_service,
 			channel_name,
-			io_service.wrap(boost::bind(sender, boost::ref(mybot), channel_name, _1, 0))
+			io_service.wrap(std::bind(sender, std::ref(mybot), channel_name, std::placeholders::_1, 1))
 		)
 	);
-#endif
-
 #endif
 }

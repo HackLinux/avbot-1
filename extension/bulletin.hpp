@@ -1,4 +1,4 @@
-
+﻿
 #pragma once
 
 #include <string>
@@ -51,9 +51,9 @@ public:
 	}
 
 	// on_message 回调.
-	void operator()( boost::property_tree::ptree message ) const;
+	void operator()(channel_identifier cid, avbotmsg msg, send_avchannel_message_t sender, boost::asio::yield_context yield_context) const;
 	// 超时的回调 - 重算调度.
-	void operator()( boost::system::error_code);
+	void operator()(boost::system::error_code);
 	// 超时的回调 - 回显.
-	void operator()( boost::system::error_code, std::string );
+	void operator()(boost::system::error_code, std::string);
 };

@@ -107,10 +107,9 @@ void bulletin::schedule_next() const
 	return;
 }
 
-void bulletin::operator()( boost::property_tree::ptree message ) const
+void bulletin::operator()(channel_identifier cid, avbotmsg msg, send_avchannel_message_t sender, boost::asio::yield_context yield_context) const
 {
 	// 其实主要是为了响应 .qqbot bulletin 命令.
-
 }
 
 void bulletin::operator()( boost::system::error_code ec, std::string msgfile )

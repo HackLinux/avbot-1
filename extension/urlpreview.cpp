@@ -209,11 +209,11 @@ struct urlpreview
 
 }
 
-void urlpreview::operator()( boost::property_tree::ptree message )
+void urlpreview::operator()(channel_identifier cid, avbotmsg msg, send_avchannel_message_t sender, boost::asio::yield_context yield_context)
 {
 	// 检查 URL
-	std::string txt = message.get<std::string>( "message.text" );
-	std::string speaker = message.get<std::string>( "who.nick" );; // 发了 url 的人的 nick
+	std::string txt = msg.to_plain_text();
+	std::string speaker = msg.sender.nick; // 发了 url 的人的 nick
 
 	// 用正则表达式
 	// http://.*
