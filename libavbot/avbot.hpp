@@ -25,7 +25,11 @@
 
 class BOOST_SYMBOL_VISIBLE avbot : boost::noncopyable
 {
+public:
 	typedef boost::variant<std::shared_ptr<webqq::webqq>, std::shared_ptr<avim>, std::shared_ptr<irc::client>, std::shared_ptr<xmpp>> accounts_t;
+	typedef std::function<void (std::string) > need_verify_image;
+	typedef boost::signals2::signal<void(channel_identifier, avbotmsg) > on_message_type;
+
 private:
 	boost::asio::io_service & m_io_service;
 
@@ -46,6 +50,10 @@ private:
 	std::shared_ptr<std::atomic<bool>> m_quit;
 
 public:
+	// 每当有消息的时候激发.
+	on_message_type on_message;
+
+public:
 	avbot(boost::asio::io_service & io_service);
 	~avbot();
 
@@ -53,6 +61,7 @@ public:
 
 	// 添加一个 channel
 	void add_channel(std::string name, std::shared_ptr<avchannel>);
+    std::shared_ptr<avchannel> get_channel(channel_identifier cid);
 
 public:
 	void send_avbot_message(channel_identifier, avbotmsg, boost::asio::yield_context);
@@ -62,9 +71,6 @@ public:
 
 public:
 	// 这里是一些公开的成员变量.
-	typedef std::function<void (std::string) > need_verify_image;
-
-	typedef boost::signals2::signal<void(channel_identifier, avbotmsg) > on_message_type;
 
 	// 用了传入一个 url 生成器，这样把 qq 的消息里的图片地址转换为 vps 上跑的 http 服务的地址。
 	std::function<std::string(std::string)> m_urlformater;
@@ -73,9 +79,6 @@ public:
 	std::function<void(std::string digestname, std::string data)> m_image_saver;
 	// 传入一个 image 缓存器, 如果返回了数据, 则 avbot 不会去下载图片
 	std::function<std::string(std::string digestname)> m_image_cacher;
-
-	// 每当有消息的时候激发.
-	on_message_type on_message;
 
 	std::string preamble_qq_fmt, preamble_irc_fmt, preamble_xmpp_fmt;
 

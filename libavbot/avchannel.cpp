@@ -1,7 +1,7 @@
-
+﻿
 #include "avchannel.hpp"
 
-bool avchannel::can_handle(channel_identifier channel_id)
+bool avchannel::can_handle(channel_identifier channel_id) const
 {
     // 看是否属于自己频道
     auto found = std::find(std::begin(m_rooms), std::end(m_rooms), channel_id);
@@ -19,6 +19,8 @@ void avchannel::handle_message(channel_identifier channel_id, avbotmsg msg, send
 
         send_avbot_message(room, msg, yield_context);
     }
+
+    handle_extra_message(channel_id, msg, send_avbot_message, yield_context);
 }
 
 void avchannel::broadcast_message(avbotmsg msg, send_avbot_message_t send_avbot_message, boost::asio::yield_context yield_context)

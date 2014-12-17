@@ -1,7 +1,7 @@
-#include <boost/phoenix.hpp>
+﻿#include <boost/phoenix.hpp>
 #include <boost/fusion/adapted/std_pair.hpp>
 
-#include <boost/spirit/home/qi.hpp>
+#include <boost/spirit/include/qi.hpp>
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/json_parser.hpp>
 
@@ -49,7 +49,7 @@ struct cfg_grammar : public qi::grammar<Iterator, ptree(), ascii::space_type>
 		using spirit::_3;
 		using spirit::_4;
 
-		key_value_pairs %= *string_val;
+		key_value_pairs %= comments >> *(string_val >> comments);
 		string_val %= key >> qi::lit(':') >> value;
 		key %= *ascii::alnum;
 		value %= qi::as<ptree>()[number] | qi::as<ptree>()[string] | object | list;
@@ -57,6 +57,8 @@ struct cfg_grammar : public qi::grammar<Iterator, ptree(), ascii::space_type>
 		number %= qi::int_;
 		object %= qi::lit('{') >> key_value_pairs >> qi::lit('}');
 		list %= qi::lit('{') >> *qi::as<std::pair<std::string, ptree>>()[value] >> qi::lit('}');
+		comments %= *comment;
+		comment %= qi::lexeme[qi::lit('#') >> *(qi::char_ - qi::lit('\n')) >> qi::lit('\n')];
 
 		qi::on_error<qi::fail>
 			(
@@ -81,28 +83,21 @@ struct cfg_grammar : public qi::grammar<Iterator, ptree(), ascii::space_type>
 	qi::rule<Iterator, int()> number;
 	qi::rule<Iterator, ptree(), ascii::space_type> object;
 	qi::rule<Iterator, ptree(), ascii::space_type> list;
+	qi::rule<Iterator, void(), ascii::space_type> comments;
+	qi::rule<Iterator, void(), ascii::space_type> comment;
 };
 
-ptree parse_cfg(std::istream_iterator<char> accounts_file_begin, std::istream_iterator<char> accounts_file_end)
+ptree parse_cfg(std::string filecontent)
 {
 	typedef std::string::const_iterator Iterator;
-
-	std::string filecontent;
-	filecontent.reserve(1080);
-
-	for (; accounts_file_begin != accounts_file_end; ++accounts_file_begin)
-	{
-		filecontent.append(1, *accounts_file_begin);
-	}
-
-	//std::string cfg = R"(qq : {qqnumber: "451411599" password:"123456"} irc : {nick:"12345" ircserver: "irc.freenode.net" rooms: {"avplayer" "gentoocn"} })";
-	std::string cfg = R"(qq : {qqnumber: "451411599" password:"123456"} irc : {nick:"12345" ircserver: "irc.freenode.net" rooms: {"avplayer" "gentoocn"} })";
 	ptree result;
+
 	Iterator first = filecontent.begin();
 	Iterator last = filecontent.end();
-	qi::phrase_parse(first, last, cfg_grammar<Iterator>(), ascii::space, result);
 
 	std::cout << std::string(first, last) << std::endl;
+
+	qi::phrase_parse(first, last, cfg_grammar<Iterator>(), ascii::space, result);
 
 	boost::property_tree::json_parser::write_json(std::cout, result);
 	return result;

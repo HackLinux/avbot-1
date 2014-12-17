@@ -351,8 +351,6 @@ static void accepte_handler(
 	avbot & mybot,
 	soci::session & db)
 {
-
-
 	std::make_shared<avbot_rpc_server>(
 		m_socket,
 		std::ref(mybot.on_message),

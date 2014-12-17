@@ -92,7 +92,7 @@ extern "C" const char * avbot_version();
 extern "C" const char * avbot_version_build_time();
 extern "C" int playsound();
 
-extern pt::ptree parse_cfg(std::istream_iterator<char> first, std::istream_iterator<char> last);
+extern pt::ptree parse_cfg(std::string filecontent);
 
 char * execpath;
 avlog logfile;			// 用于记录日志文件.
@@ -348,11 +348,11 @@ static void my_on_bot_command(channel_identifier cid, avbotmsg message, avbot & 
 		boost::delayedcallsec(
 				mybot.get_io_service(),
 				6,
-				std::bind(on_bot_command, cid, message, std::ref(mybot))
+				std::bind(on_bot_command, cid, message, std::ref(mybot), mybot.get_channel(cid))
 		);
 		return;
 
-		on_bot_command(cid, message, mybot);
+		on_bot_command(cid, message, mybot, mybot.get_channel(cid));
 	}
 	catch (...)
 	{}
@@ -366,12 +366,33 @@ int daemon(int nochdir, int noclose)
 }
 #endif // WIN32
 
-#include "fsconfig.ipp"
-
 void sighandler(boost::asio::io_service & io)
 {
 	io.stop();
 	std::cout << "Quiting..." << std::endl;
+}
+
+static fs::path get_home_dir()
+{
+#ifdef _WIN32
+	if (getenv("USERPROFILE"))
+	{
+		return getenv("USERPROFILE");
+	}
+	else
+	{
+		return "C:/";
+	}
+#else
+	if (getenv("HOME"))
+	{
+		return getenv("HOME");
+	}
+	else
+	{
+		return "/run";
+	}
+#endif
 }
 
 int main(int argc, char * argv[])
@@ -495,6 +516,25 @@ int main(int argc, char * argv[])
 	// 设置 BackTrace
 	avbot_setup_seghandler();
 
+	if (vm.count("config") == 1 && account_settings == "/etc/avbot.conf")
+	{
+		// 查找合适的配置文件. 优先选择 当前目录, 然后是 $HOME/.avbot.conf 最后是 /etc/avbot.conf
+		// 都没有的话, 还是使用 avbot.conf
+		if (fs::exists("avbot.conf"))
+		{
+			account_settings = fs::current_path() / "avbot.conf";
+		}
+		else if (fs::exists( get_home_dir() / ".avbot.conf" ))
+		{
+			account_settings = get_home_dir() / ".avbot.conf" ;
+		}
+		else if (fs::exists("/etc/avbot.conf"))
+			account_settings = "/etc/avbot.conf";
+		else
+		{
+			account_settings = fs::current_path() / "avbot.conf";
+		}
+	}
 
 	{
 #ifndef _WIN32
@@ -587,68 +627,76 @@ int main(int argc, char * argv[])
 	// 解析 accounts 文件, 设置帐号
 	pt::ptree accounts_settings;{
 	std::ifstream accounts_file_stream;
+	std::string accounts_file_content;
+	accounts_file_content.resize(fs::file_size(account_settings));
 	accounts_file_stream.open(account_settings.string().c_str(), std::ifstream::in);
-	std::istream_iterator<char> accounts_file_begin(accounts_file_stream);
-	std::istream_iterator<char> accounts_file_end;
-
-	accounts_settings = parse_cfg(accounts_file_begin, accounts_file_end);}
+	accounts_file_stream.read(&accounts_file_content[0], accounts_file_content.size());
+	accounts_settings = parse_cfg(accounts_file_content);}
 
 	// 解析 accounts_settings 然后设置帐号
  	for (pt::ptree::value_type account: accounts_settings)
 	{
-		if (account.first == "qq")
-		{
-			auto qqnumber = account.second.get<std::string>("qqnumber");
-			auto qqpassword = account.second.get<std::string>("password");
-			// 调用 add_qq_account
- 			mybot.add_qq_account(qqnumber, qqpassword,
-				std::bind(on_verify_code, std::placeholders::_1, std::ref(mybot), std::ref(decaptcha_agent)),
-				no_persistent_db);
-		}
-		else if (account.first == "irc")
-		{
-			auto nick = account.second.get<std::string>("nick");
-			auto password = account.second.get<std::string>("password");
-
-			auto irc_client = mybot.add_irc_account(nick, password);
-
-			auto rooms = account.second.get_child("rooms");
-			for (pt::ptree::value_type room : rooms)
+		try{
+			if (account.first == "qq")
 			{
-				std::string room_name = room.first;
-				irc_client->join(room_name);
+				auto qqnumber = account.second.get<std::string>("qqnumber");
+				auto qqpassword = account.second.get<std::string>("password");
+				// 调用 add_qq_account
+				mybot.add_qq_account(qqnumber, qqpassword,
+					std::bind(on_verify_code, std::placeholders::_1, std::ref(mybot), std::ref(decaptcha_agent)),
+					no_persistent_db);
 			}
-		}
-		else if (account.first == "xmpp")
-		{
-			auto nick = account.second.get<std::string>("name");
-			auto password = account.second.get<std::string>("password");
-
-			auto xmpp_client = mybot.add_xmpp_account(nick, password);
-
-			auto rooms = account.second.get_child("rooms");
-			for (pt::ptree::value_type room : rooms)
+			else if (account.first == "irc")
 			{
-				std::string room_name = room.first;
-				xmpp_client->join(room_name);
+				auto nick = account.second.get<std::string>("nick");
+				auto password = account.second.get<std::string>("password","");
+
+				auto irc_client = mybot.add_irc_account(nick, password);
+
+				auto rooms = account.second.get_child("rooms");
+				for (pt::ptree::value_type room : rooms)
+				{
+					std::string room_name = room.second.data();
+					irc_client->join(room_name);
+				}
 			}
-		}
-		else if (account.first == "avim")
-		{
-			auto key = account.second.get<std::string>("keyfile");
-			auto cert = account.second.get<std::string>("certfile");
+			else if (account.first == "xmpp")
+			{
+				auto nick = account.second.get<std::string>("name");
+				auto password = account.second.get<std::string>("password");
 
-			auto avim_client = mybot.add_avim_account(key, cert);
+				auto xmpp_client = mybot.add_xmpp_account(nick, password);
 
-		}
+				auto rooms = account.second.get_child("rooms");
+				for (pt::ptree::value_type room : rooms)
+				{
+					std::string room_name = room.first;
+					xmpp_client->join(room_name);
+				}
+			}
+			else if (account.first == "avim")
+			{
+				auto key = account.second.get<std::string>("keyfile");
+				auto cert = account.second.get<std::string>("certfile");
+
+				auto avim_client = mybot.add_avim_account(key, cert);
+
+			}else if (account.first == "log")
+			{
+				run_root = account.second.get<std::string>("dir");
+			}
+		}catch(const boost::property_tree::ptree_error&)
+		{}
 	}
 
 	// 遍历文件夹, 设置 channel
 
-	for (fs::path subdirs : run_root)
+	for (auto subdir_it = fs::directory_iterator(run_root); subdir_it != fs::directory_iterator(); ++subdir_it)
 	{
+		fs::path subdirs = * subdir_it;
 		if (fs::is_directory(subdirs))
 		{
+			std::cout << "Entering: " << subdirs << std::endl;
 			// 检查 [channelname]/map.txt
 			if (fs::exists(subdirs / "map.txt"))
 			{
@@ -666,10 +714,10 @@ int main(int argc, char * argv[])
 					std::getline(map, mapline);
 					std::vector<std::string> tokens;
 
+					boost::split(tokens, mapline, boost::is_any_of(":"));
+
 					if( tokens.size() ==2)
 					{
-
-						boost::split(tokens, mapline, boost::is_any_of(":"));
 						channel->add_room(tokens[0], tokens[1]);
                     }
                     else
@@ -679,7 +727,7 @@ int main(int argc, char * argv[])
 				mybot.add_channel(subdirs.filename().string(), channel);
 			}
 		}
-		
+
 	}
 
 	// 记录到日志.

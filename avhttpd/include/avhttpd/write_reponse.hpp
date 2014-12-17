@@ -199,7 +199,7 @@ public:
 
 	void operator()(boost::system::error_code ec, size_t bytes_transfered)
 	{
-		if(coro=!coro)
+		if ((coro=(!coro)))
 		{
 			boost::asio::async_write(m_stream, m_streambuf.data(), *this);
 		}

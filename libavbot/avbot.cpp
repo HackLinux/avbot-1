@@ -111,6 +111,16 @@ void avbot::add_channel(std::string name, std::shared_ptr< avchannel > c)
     m_avchannels.insert(std::make_pair(name, c));
 }
 
+std::shared_ptr<avchannel> avbot::get_channel(channel_identifier cid)
+{
+	for (auto c_p : m_avchannels)
+	{
+		if(c_p.second->can_handle(cid))
+			return c_p.second;
+	}
+	return std::shared_ptr<avchannel>();
+}
+
 void avbot::callback_on_irc_message(std::shared_ptr<irc::client> irc_account, irc::irc_msg pMsg )
 {
 	channel_identifier channdl_id;

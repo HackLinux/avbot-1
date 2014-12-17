@@ -1,10 +1,11 @@
-#pragma once
+﻿#pragma once
 
 #include <string>
 #include <memory>
 #include <functional>
 #include <boost/any.hpp>
 #include <boost/asio/spawn.hpp>
+#include <boost/signals2.hpp>
 
 struct avbotmsg_image_segment
 {
@@ -106,11 +107,16 @@ typedef std::function<void(channel_identifier, avbotmsg, boost::asio::yield_cont
 class avchannel // : std::enable_shared_from_this<avchannel>
 {
 public:
-	std::function<std::string(msg_sender)> preamble_formater;
+	typedef boost::signals2::signal<void(channel_identifier, avbotmsg, send_avbot_message_t, boost::asio::yield_context)> handle_extra_message_type;
 
-	bool can_handle(channel_identifier channel_id);
+	// 信号, 用于处理额外的消息!
+	handle_extra_message_type handle_extra_message;
+
 	// 每个频道会接收到所有的消息, 只是会过滤掉不是自己的消息
+	bool can_handle(channel_identifier channel_id) const;
+
 	void handle_message(channel_identifier channel_id, avbotmsg msg, send_avbot_message_t, boost::asio::yield_context);
+
 	void broadcast_message(avbotmsg msg, send_avbot_message_t, boost::asio::yield_context);
 
 	void add_room(std::string protocol, std::string room)
@@ -119,7 +125,7 @@ public:
 	}
 
 	// get primary channel name,  aka, the QQ group number
-	std::string get_primary()
+	std::string get_primary() const
 	{
 		for (auto room : m_rooms)
 		{
@@ -138,7 +144,13 @@ public:
 		return m_rooms[0].room;
 	}
 
+	std::string name() const
+	{
+		return m_name;
+	}
+
 private:
 	std::vector<channel_identifier> m_rooms;
+	std::string m_name;
 };
 

@@ -34,6 +34,7 @@
 
 #include "libavlog/avlog.hpp"
 #include "libavbot/avbot.hpp"
+#include "libavbot/avchannel.hpp"
 
 #include "libwebqq/webqq.hpp"
 
@@ -161,7 +162,8 @@ struct mail_recoder
 	std::function<void(std::string)> sendmsg;
 
 	// 由 avbot 的 on_message 调用.
-	void operator()(channel_identifier cid, avbotmsg message, const boost::signals2::connection & con)
+	//channel_identifier, avbotmsg, send_avbot_message_t, boost::asio::yield_context
+	void operator()(channel_identifier cid, avbotmsg message, send_avbot_message_t, boost::asio::yield_context, const boost::signals2::connection & con)
 	{
 		static boost::regex ex(".qqbot mail subject \"?(.*)\"?");
 		boost::cmatch what;
@@ -207,14 +209,13 @@ struct mail_recoder
 
 // 命令控制, 所有的协议都能享受的命令控制在这里实现.
 // msg_sender 是一个函数, on_command 用/*它发送消息.
-void on_bot_command(channel_identifier cid, avbotmsg avmessage, avbot& mybot)
+void on_bot_command(channel_identifier cid, avbotmsg avmessage, avbot& mybot, std::shared_ptr<avchannel> channel)
 {
-
 	boost::regex ex;
 	boost::smatch what;
 	webqq::qqGroup_ptr  group;
 
-	std::string channelname;
+	std::string channelname = channel->name();
 
 	auto msg_sender = boost::bind(&avbot::send_broadcast_message, &mybot,
 		channelname, _1
@@ -280,9 +281,9 @@ void on_bot_command(channel_identifier cid, avbotmsg avmessage, avbot& mybot)
 		mrecoder.mybot = & mybot;
 		mrecoder.sendmsg = msg_sender;
 
-		avbot::on_message_type::extended_slot_type mrecoder_slot(mrecoder, _2, _3, _1);
+		avchannel::handle_extra_message_type::extended_slot_type mrecoder_slot(mrecoder, _2, _3, _4, _5, _1);
 
-		mybot.on_message.connect_extended(mrecoder_slot);
+		channel->handle_extra_message.connect_extended(mrecoder_slot);
 		return;
 	}
 

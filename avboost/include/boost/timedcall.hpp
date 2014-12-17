@@ -1,4 +1,4 @@
-
+﻿
 #pragma once
 
 #include <boost/shared_ptr.hpp>
@@ -15,7 +15,7 @@ template<class timeunit, class Handler>
 class base_delayedcall_op{
 public:
 	typedef void result_type;
-	
+
 	base_delayedcall_op(boost::asio::io_service &_io_service, int timeunitcount, Handler handler)
 		: io_service(_io_service)
 		, timer( new boost::asio::deadline_timer(io_service))
