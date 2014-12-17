@@ -64,6 +64,11 @@ struct avbotmsg
 		seg.content = plain_text;
 		msgs.push_back(seg);
 	}
+
+	avbotmsg(const char* str)
+		: avbotmsg(std::string(str))
+	{
+	}
 };
 
 struct channel_identifier

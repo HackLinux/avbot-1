@@ -53,7 +53,7 @@ class avbot_rpc_server
 {
 public:
 	typedef boost::signals2::signal <
-	void( boost::property_tree::ptree )
+		void( channel_identifier, avbotmsg )
 	> on_message_signal_type;
 
 	on_message_signal_type &broadcast_message;
@@ -78,7 +78,7 @@ public:
 			std::bind<void>(&avbot_rpc_server::client_loop, shared_from_this(),
 					boost::system::error_code(), 0 )
 		);
-		m_connect = broadcast_message.connect(std::bind<void>(&avbot_rpc_server::callback_message, this,std::placeholders::_1));
+		m_connect = broadcast_message.connect(std::bind<void>(&avbot_rpc_server::callback_message, this, std::placeholders::_1, std::placeholders::_2));
 	}
 private:
 	void get_response_sended(std::shared_ptr< boost::asio::streambuf > v, boost::system::error_code ec, std::size_t);
@@ -88,7 +88,7 @@ private:
 	void client_loop(boost::system::error_code ec, std::size_t bytestransfered);
 
 	// signal 的回调到这里
-	void callback_message(const boost::property_tree::ptree & jsonmessage );
+	void callback_message(channel_identifier, avbotmsg);
 	void done_search(boost::system::error_code ec, boost::property_tree::ptree);
 private:
 	boost::shared_ptr<socket_type> m_socket;
@@ -138,7 +138,8 @@ int avbot_rpc_server::process_post( std::size_t bytes_transfered )
 	{
 		// 读取 json
 		js::read_json( jsonpostdata, msg );
-		broadcast_message( msg );
+		// TODO 格式化成 avbotmsg
+// 		broadcast_message( msg );
 	}
 	catch( const pt::ptree_error &err )
 	{
@@ -171,7 +172,7 @@ void avbot_rpc_server::on_pop(std::shared_ptr<boost::asio::streambuf> v)
 
 	avhttpd::async_write_response(
 		*m_socket, 200, opts, *v,
-		std::bind<void>(&avbot_rpc_server::get_response_sended, shared_from_this(), v, std::placeholders::_1,std::placeholders::_2)
+		std::bind(&avbot_rpc_server::get_response_sended, shared_from_this(), v, std::placeholders::_1, std::placeholders::_2)
 	);
 }
 
@@ -330,13 +331,14 @@ void avbot_rpc_server::client_loop(boost::system::error_code ec, std::size_t byt
 	}}
 }
 
-void avbot_rpc_server::callback_message(const boost::property_tree::ptree& jsonmessage)
+void avbot_rpc_server::callback_message(channel_identifier, avbotmsg)
 {
 	std::shared_ptr<boost::asio::streambuf> buf(new boost::asio::streambuf);
 	std::ostream stream(buf.get());
 	std::stringstream teststream;
 
-	js::write_json(stream, jsonmessage);
+	// TODO 格式化为 json
+	// js::write_json(stream, jsonmessage);
 
 	m_responses.push(buf);
 }

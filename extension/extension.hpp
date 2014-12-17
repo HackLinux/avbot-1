@@ -90,13 +90,12 @@ public:
 		return *this;
 	}
 
-	void operator()(const boost::property_tree::ptree & msg)
+	void operator()(channel_identifier cid, avbotmsg msg)
 	{
 		try{
-			if (msg.get<std::string>("channel") != m_channel_name)
-				return;
+
 			// 调用实际的函数
-			(*m_exteison_obj)(msg);
+			// (*m_exteison_obj)(msg);
 		}catch (const boost::property_tree::ptree_error&)
 		{
             // error access the ptree

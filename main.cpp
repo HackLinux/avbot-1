@@ -100,7 +100,8 @@ avlog logfile;			// 用于记录日志文件.
 static counter cnt;				// 用于统计发言信息.
 static std::string progname;
 static bool need_vc = false;
-extern std::string preamble_qq_fmt, preamble_irc_fmt, preamble_xmpp_fmt;
+
+std::string preamble_qq_fmt, preamble_irc_fmt, preamble_xmpp_fmt;
 
 #ifdef  _WIN32
 static void wrappered_hander(boost::system::error_code ec, std::string str, boost::function<void(boost::system::error_code, std::string)> handler, std::shared_ptr< boost::function<void()> > closer)
@@ -144,8 +145,8 @@ static void vc_code_decoded(boost::system::error_code ec, std::string provider,
 		printf("\r");
 		fflush(stdout);
 		AVLOG_ERR << literal_to_localstr("解码出错，重登录 ...");
-		mybot.broadcast_message("验证码有错，重新登录QQ");
-		mybot.relogin_qq_account();
+		mybot.broadcast_message_to_all_channels("验证码有错，重新登录QQ");
+// 	//	mybot.relogin_qq_account();
 		return;
 	}
 
@@ -153,7 +154,7 @@ static void vc_code_decoded(boost::system::error_code ec, std::string provider,
 		<< literal_to_localstr(" 成功解码验证码!");
 
 	if (provider == "IRC/XMPP 好友辅助验证码解码器")
-		mybot.broadcast_message("验证码已输入");
+		mybot.broadcast_message_to_all_channels("验证码已输入");
 
 	mybot.feed_login_verify_code(vccode, reportbadvc);
 }
@@ -188,7 +189,7 @@ static void stdin_feed_broadcast(avbot & mybot, std::string line_input)
 
 	if (line_input.size() > 1)
 	{
-		mybot.broadcast_message(
+		mybot.broadcast_message_to_all_channels(
 			boost::str(
 				boost::format("来自 avbot 命令行的消息: %s")
 				% line_input
@@ -206,45 +207,8 @@ struct build_group_has_qq
 	}
 };
 
-static void build_group(std::string chanelmapstring, avbot & mybot)
+static std::string imgurlformater(std::string cface, std::string baseurl)
 {
-	std::vector<std::string> gs;
-	boost::split(gs, chanelmapstring, boost::is_any_of(";"));
-
-	int m = 1;
-
-	BOOST_FOREACH(std::string  pergroup, gs)
-	{
-		std::vector<std::string> groups;
-		boost::split(groups, pergroup, boost::is_any_of(","));
-
-		// 对于包含了 qq: 的那个组，组名就是 qq号码，而其他的嘛，组名使用 groupXXX
-		std::vector<std::string>::iterator qqgroup = std::find_if(groups.begin(),
-			groups.end(), build_group_has_qq());
-
-		if (qqgroup != groups.end())
-		{
-			BOOST_FOREACH(std::string  c, groups)
-			{
-				mybot.add_to_channel((*qqgroup).substr(3), c);
-			}
-		}
-		else
-		{
-			m ++;
-			std::string group_name = std::string("group") + boost::lexical_cast<std::string>(m);
-			BOOST_FOREACH(std::string  c, groups)
-			{
-				mybot.add_to_channel(group_name, c);
-			}
-		}
-	}
-}
-
-static std::string imgurlformater(avbot::av_message_tree qqmessage, std::string baseurl)
-{
-	std::string cface = qqmessage.get<std::string>("name");
-
 	return avhttp::detail::escape_path(
 		boost::str(
 			boost::format("%s/images/%s/%s")
@@ -255,7 +219,7 @@ static std::string imgurlformater(avbot::av_message_tree qqmessage, std::string 
 	);
 }
 
-static void avbot_log(avbot::av_message_tree message, avbot & mybot, soci::session & db)
+static void avbot_log(channel_identifier id, avbotmsg message, avbot & mybot, soci::session & db)
 {
 	std::string linemessage;
 
@@ -263,60 +227,51 @@ static void avbot_log(avbot::av_message_tree message, avbot & mybot, soci::sessi
 
 	curtime = avlog::current_time();
 
-	protocol = message.get<std::string>("protocol");
+	protocol = id.protocol;
 	// 首先是根据 nick 格式化
 	if ( protocol != "mail")
 	{
 		std::string textonly;
-		linemessage += message.get<std::string>("preamble", "");
+		linemessage += message.sender.preamble;
 
-		BOOST_FOREACH(const avbot::av_message_tree::value_type & v, message.get_child("message"))
+		for (avbotmsg_segment & msg_seg : message.msgs)
 		{
-			if (v.first == "text")
+			if (msg_seg.type  == "text")
 			{
-				textonly += v.second.data();
-				linemessage += avlog::html_escape(v.second.data());
+				textonly += boost::any_cast<std::string>(msg_seg.content);
+				linemessage += avlog::html_escape(textonly);
 			}
-			else if (v.first == "url")
+			else if (msg_seg.type == "url")
 			{
 				linemessage += boost::str(
 					boost::format("<a href=\"%s\">%s</a>")
-					% v.second.data()
-					% v.second.data()
+					% boost::any_cast<std::string>(msg_seg.content)
+					% boost::any_cast<std::string>(msg_seg.content)
 				);
 			}
-			else if (v.first == "cface")
+			else if (msg_seg.type == "image")
 			{
-				if (mybot.fetch_img)
-				{
-					std::string cface = v.second.get<std::string>("name");
-					linemessage += boost::str(
-						boost::format("<img src=\"../images/%s/%s\" />")
-						% avbot::image_subdir_name(cface)
-						% cface
-					);
-				}
-				else
-				{
+				auto img_seg = boost::any_cast<avbotmsg_image_segment>(msg_seg.content);
+				std::string cface = img_seg.cname;
 
-					std::string url = v.second.get<std::string>("gchatpicurl");
-					linemessage += boost::str(
-						boost::format("\t\t<img src=\"%s\" />\r\n")
-						% url
-					);
-				}
+				linemessage += boost::str(
+					boost::format("<img src=\"../images/%s/%s\" />")
+					% avbot::image_subdir_name(cface)
+					% cface
+				);
 			}
-			else if (v.first == "img")
+			else if (msg_seg.type == "emoji")
 			{
+				auto emoji_seg = boost::any_cast<avbotmsg_emoji_segment>(msg_seg.content);
 				linemessage += boost::str(
 					boost::format("\t\t<img src=\"%s\" />\r\n")
-					% v.second.data()
+					% emoji_seg.emoji_url
 				);
 			}
 		}
-		std::string channel_name = message.get<std::string>("channel", "");
+		std::string channel_name ;// TODO = message.get<std::string>("channel", "");
 		if(protocol != "rpc")
-			nick = message.get<std::string>("who.nick", "");
+			nick = message.sender.nick;
 
 		if (channel_name.empty())
 		{
@@ -342,23 +297,7 @@ static void avbot_log(avbot::av_message_tree message, avbot & mybot, soci::sessi
 				dynamic_cast<soci::sqlite3_session_backend*>(db.get_backend())->conn_
 			);
 
-			// 如果最好的办法就是遍历组里的所有QQ群，都记录一次.
-			avbot::av_chanels_t channelmap = mybot.get_channel_map(channel_name);
-
-			// 如果没有Q群，诶，只好，嘻嘻.
 			logfile.add_log(channel_name, linemessage, rowid);
-
-			BOOST_FOREACH(std::string roomname, channelmap)
-			{
-				if (roomname.substr(0, 3) == "qq:")
-				{
-					// 避免重复记录.
-					if (roomname.substr(3) != channel_name)
-					{
-						logfile.add_log(roomname.substr(3), linemessage, rowid);
-					}
-				}
-			}
 		}
 	}
 	else
@@ -390,35 +329,30 @@ static void init_database(soci::session & db)
 	");";
 }
 
-static void my_on_bot_command(avbot::av_message_tree message, avbot & mybot)
+static void my_on_bot_command(channel_identifier cid, avbotmsg message, avbot & mybot)
 {
 	try
 	{
 		std::string textmessage;
+		return;
 
-		try
-		{
-			textmessage = message.get<std::string>("newbee");
-			// 如果没有发生异常, 那就是新人入群消息了, 嘻嘻.
-			// 格式化为 .qqbot newbee XXX, 哼!
-			std::string nick = message.get<std::string>("who.name");
-			textmessage = boost::str(boost::format(".qqbot newbee %s") % nick);
-			message.put("message.text", textmessage);
-			message.put("op", 1);
 
-			boost::delayedcallsec(
-					mybot.get_io_service(),
-					6,
-					boost::bind(on_bot_command, message, boost::ref(mybot))
-			);
-			return;
-		}
-		catch (const boost::property_tree::ptree_bad_path &)
-		{
-			textmessage = message.get<std::string>("message.text");
-		}
+		textmessage = "";
+		// 如果没有发生异常, 那就是新人入群消息了, 嘻嘻.
+		// 格式化为 .qqbot newbee XXX, 哼!
+		std::string nick = message.sender.nick;
+		textmessage = boost::str(boost::format(".qqbot newbee %s") % nick);
+// 		/*message*/.put("message.text", textmessage);
+// 		message.put("op", 1);
 
-		on_bot_command(message, mybot);
+		boost::delayedcallsec(
+				mybot.get_io_service(),
+				6,
+				std::bind(on_bot_command, cid, message, std::ref(mybot))
+		);
+		return;
+
+		on_bot_command(cid, message, mybot);
 	}
 	catch (...)
 	{}
@@ -512,8 +446,6 @@ int main(int argc, char * argv[])
 	("use_avplayer_free_vercode_decoder", po::value<bool>(&use_avplayer_free_vercode_decoder),
 		"ask microcai for permission")
 
-	("localimage", po::value<bool>(&(mybot.fetch_img))->default_value(true),
-		"fetch qq image to local disk and store it there")
 	("weblogbaseurl", po::value<std::string>(&(weblogbaseurl)),
 		"base url for weblog serving")
 	("rpcport",	po::value<unsigned>(&rpcport)->default_value(6176),
@@ -643,7 +575,7 @@ int main(int argc, char * argv[])
 	decaptcha_agent.add_decoder(
 		decaptcha::decoder::channel_friend_decoder(
 			io_service,
-			boost::bind(&avbot::broadcast_message, &mybot, _1),
+			boost::bind(&avbot::broadcast_textmessage_to_all_channels, &mybot, _1),
 			boost::bind(&channel_friend_decoder_vc_inputer, _1, _2, boost::ref(vcinput))
 		)
 	);
@@ -651,15 +583,6 @@ int main(int argc, char * argv[])
 	mybot.preamble_irc_fmt = preamble_irc_fmt;
 	mybot.preamble_qq_fmt = preamble_qq_fmt;
 	mybot.preamble_xmpp_fmt = preamble_xmpp_fmt;
-
-	mybot.signal_new_channel.connect(
-		boost::bind(
-			new_channel_set_extension,
-			boost::ref(io_service),
-			boost::ref(mybot),
-			_1
-		)
-	);
 
 	// 解析 accounts 文件, 设置帐号
 	pt::ptree accounts_settings;{
@@ -670,17 +593,21 @@ int main(int argc, char * argv[])
 
 	accounts_settings = parse_cfg(accounts_file_begin, accounts_file_end);}
 
-	//
+	// 解析 accounts_settings 然后设置帐号
+// 	for (pt::ptree account: account_settings)
+	{
+
+	}
 
 	// TODO 遍历文件夹, 设置 channel
 
 	// 记录到日志.
 	mybot.on_message.connect(
-		boost::bind(avbot_log, _1, boost::ref(mybot), boost::ref(avlogdb))
+		std::bind(avbot_log, std::placeholders::_1, std::placeholders::_2, std::ref(mybot), std::ref(avlogdb))
 	);
 	// 开启 bot 控制.
 	mybot.on_message.connect(
-		boost::bind(my_on_bot_command, _1, boost::ref(mybot))
+		std::bind(my_on_bot_command, std::placeholders::_1, std::placeholders::_2, std::ref(mybot))
 	);
 
 	boost::asio::io_service::work work(io_service);
@@ -729,7 +656,7 @@ int main(int argc, char * argv[])
 	uint64_t watchdog_usec;
 	if(sd_watchdog_enabled(1, &watchdog_usec))
 	{
-		mybot.on_message.connect([](avbot::av_message_tree)
+		mybot.on_message.connect([](channel_identifier, avbotmsg)
 		{
 			sd_notify(0, "WATCHDOG=1");
 		});

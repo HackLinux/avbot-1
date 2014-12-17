@@ -50,6 +50,7 @@ static void sender(avbot & mybot, std::string channel_name, std::string txt, boo
 
 void new_channel_set_extension(boost::asio::io_service &io_service, avbot & mybot , std::string channel_name)
 {
+#if 0
 	mybot.on_message.connect(
 		avbot_extension(
 			channel_name,
@@ -175,5 +176,7 @@ void new_channel_set_extension(boost::asio::io_service &io_service, avbot & mybo
 			io_service.wrap(boost::bind(sender, boost::ref(mybot), channel_name, _1, 0))
 		)
 	);
+#endif
+
 #endif
 }

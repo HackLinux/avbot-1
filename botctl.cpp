@@ -161,17 +161,14 @@ struct mail_recoder
 	std::function<void(std::string)> sendmsg;
 
 	// 由 avbot 的 on_message 调用.
-	void operator()(avbot::av_message_tree jsonmessage, const boost::signals2::connection & con)
+	void operator()(channel_identifier cid, avbotmsg message, const boost::signals2::connection & con)
 	{
 		static boost::regex ex(".qqbot mail subject \"?(.*)\"?");
 		boost::cmatch what;
 
 		try
 		{
-			if (jsonmessage.get<std::string>("channel") != channel)
-				return;
-
-			std::string tmsg = boost::trim_copy(jsonmessage.get<std::string>("message.text"));
+			std::string tmsg = mybot->format_message_for_textIM(message);
 
 			if (tmsg != ".qqbot end mail" && tmsg != ".qqbot mail end")
 			{
@@ -181,7 +178,7 @@ struct mail_recoder
 				}
 				else
 				{
-					boost::get<std::string>(pimf->body) += mybot->format_message(jsonmessage);
+					boost::get<std::string>(pimf->body) += mybot->format_message_for_textIM(message);
 				}
 			}
 			else
@@ -192,7 +189,7 @@ struct mail_recoder
 		}
 		catch (...)
 		{
-			boost::get<std::string>(pimf->body) += mybot->format_message(jsonmessage);
+			boost::get<std::string>(pimf->body) += mybot->format_message_for_textIM(message);
 		}
 	}
 
@@ -210,22 +207,25 @@ struct mail_recoder
 
 // 命令控制, 所有的协议都能享受的命令控制在这里实现.
 // msg_sender 是一个函数, on_command 用/*它发送消息.
-void on_bot_command(avbot::av_message_tree jsonmessage, avbot & mybot)
+void on_bot_command(channel_identifier cid, avbotmsg avmessage, avbot& mybot)
 {
 
 	boost::regex ex;
 	boost::smatch what;
 	webqq::qqGroup_ptr  group;
-	auto msg_sender = boost::bind(&avbot::broadcast_message, &mybot,
-		jsonmessage.get<std::string>("channel"), _1
+
+	std::string channelname;
+
+	auto msg_sender = boost::bind(&avbot::send_broadcast_message, &mybot,
+		channelname, _1
 	);
 
 	std::function<void(std::string)> sendmsg = mybot.get_io_service().wrap(
 		std::bind(iopost_msg, std::ref(mybot.get_io_service()),
-			msg_sender, std::placeholders::_1, jsonmessage.get<std::string>("channel"))
+			msg_sender, std::placeholders::_1, channelname)
 	);
 
-	std::string message = boost::trim_copy(jsonmessage.get<std::string>("message.text"));
+	std::string message = mybot.format_message_for_textIM(avmessage);
 
 	if (message == ".qqbot help")
 	{
@@ -276,11 +276,11 @@ void on_bot_command(avbot::av_message_tree jsonmessage, avbot & mybot)
 		mrecoder.pimf->header["to"] = what[1];
 		mrecoder.pimf->header["subject"] = "send by avbot";
 		mrecoder.pimf->body = std::string("");
-		mrecoder.channel = jsonmessage.get<std::string>("channel");
+		mrecoder.channel = channelname;
 		mrecoder.mybot = & mybot;
 		mrecoder.sendmsg = msg_sender;
 
-		avbot::on_message_type::extended_slot_type mrecoder_slot(mrecoder, _2, _1);
+		avbot::on_message_type::extended_slot_type mrecoder_slot(mrecoder, _2, _3, _1);
 
 		mybot.on_message.connect_extended(mrecoder_slot);
 		return;
@@ -320,8 +320,7 @@ void on_bot_command(avbot::av_message_tree jsonmessage, avbot & mybot)
 		list.push_back(nick);
 
 		auto_welcome question(
-			jsonmessage.get<std::string>("channel") +
-			"/welcome.txt"
+			channelname + "/welcome.txt"
 		);
 
 		question.add_to_list(list);
@@ -337,8 +336,7 @@ void on_bot_command(avbot::av_message_tree jsonmessage, avbot & mybot)
 		std::string uin =  what[1];
 		std::string nick = what[2];
 
-		std::string channelname =  jsonmessage.get<std::string>("channel");
-		webqq::qqGroup_ptr groupptr =  mybot.get_qq()->get_Group_by_qq(channelname);
+		webqq::qqGroup_ptr groupptr ; // TODO 9=  mybot.get_qq()->get_Group_by_qq(channelname);
 
 		if (groupptr)
 		{
@@ -352,7 +350,7 @@ void on_bot_command(avbot::av_message_tree jsonmessage, avbot & mybot)
 
 	}
 
-	if (jsonmessage.get<int>("op") != 1)
+	if (!avmessage.sender.is_op)
 		return;
 
 	// 开始讲座记录.
@@ -364,9 +362,7 @@ void on_bot_command(avbot::av_message_tree jsonmessage, avbot & mybot)
 
 		if (title.empty()) return ;
 
-		group = mybot.get_qq()->get_Group_by_qq(jsonmessage.get<std::string>("channel"));
-
-		if (group &&  !logfile.begin_lecture(group->qqnum, title))
+		if (!logfile.begin_lecture(channelname, title))
 		{
 			sendmsg("lecture failed!\n");
 		}
@@ -386,30 +382,15 @@ void on_bot_command(avbot::av_message_tree jsonmessage, avbot & mybot)
 		exit(0);
 	}
 
-	ex.set_expression(".qqbot join group ([0-9]+)");
-
-	if (boost::regex_match(message, what, ex))
-	{
-		mybot.get_qq()->search_group(
-			what[1],
-			"",
-			std::bind(
-				handle_search_group,
-				std::string(what[1]), std::placeholders::_1, std::placeholders::_2, std::placeholders::_3,
-				mybot.get_qq(), msg_sender
-			)
-		);
-	}
-
 	// 重新加载群成员列表.
 	if (message == ".qqbot reload")
 	{
-		group = mybot.get_qq()->get_Group_by_qq(jsonmessage.get<std::string>("channel"));
-
-		if (group)
-			mybot.get_io_service().post(
-				std::bind(&webqq::webqq::update_group_member, mybot.get_qq() , group)
-			);
+// 		group = mybot.get_qq()->get_Group_by_qq(jsonmessage.get<std::string>("channel"));
+//
+// 		if (group)
+// 			mybot.get_io_service().post(
+// 				std::bind(&webqq::webqq::update_group_member, mybot.get_qq() , group)
+// 			);
 
 		sendmsg("群成员列表重加载.");
 

@@ -546,6 +546,18 @@ void avbot::send_broadcast_message(std::string channel_name, avbotmsg msg)
 	}
 }
 
+void avbot::broadcast_message_to_all_channels(avbotmsg msg)
+{
+	for (auto c_p : m_avchannels)
+	{
+		send_broadcast_message(c_p.first, msg);
+	}
+}
+
+void avbot::broadcast_textmessage_to_all_channels(std::string text)
+{
+	broadcast_message_to_all_channels(avbotmsg(text));
+}
 
 std::string avbot::format_message_for_qq(const avbotmsg& message )
 {

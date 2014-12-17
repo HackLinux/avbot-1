@@ -57,6 +57,8 @@ public:
 public:
 	void send_avbot_message(channel_identifier, avbotmsg, boost::asio::yield_context);
 	void send_broadcast_message(std::string channel_name, avbotmsg);
+    void broadcast_message_to_all_channels(avbotmsg);
+    void broadcast_textmessage_to_all_channels(std::string);
 
 public:
 	// 这里是一些公开的成员变量.
