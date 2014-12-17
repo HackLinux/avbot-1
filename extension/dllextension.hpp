@@ -47,7 +47,7 @@ public:
 
 	typedef void (*message_sender_t)(const char * message, void* _apitag);
 
-	typedef void (*avbot_on_message_t)(const char * message, const char * channel, message_sender_t sender, void* _apitag);
+	typedef void (*avbot_on_message_t)(const char * speaker,const char * message, const char * channel, message_sender_t sender, void* _apitag);
 
 	void operator()(channel_identifier cid, avbotmsg msg, send_avchannel_message_t sender, boost::asio::yield_context yield_context)
 	{
