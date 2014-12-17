@@ -54,6 +54,16 @@ struct avbotmsg
 {
 	msg_sender sender;
 	std::vector<avbotmsg_segment> msgs;
+
+	avbotmsg() = default;
+
+	avbotmsg(std::string plain_text)
+	{
+		avbotmsg_segment seg;
+		seg.type = "text";
+		seg.content = plain_text;
+		msgs.push_back(seg);
+	}
 };
 
 struct channel_identifier
@@ -96,6 +106,7 @@ public:
 	bool can_handle(channel_identifier channel_id);
 	// 每个频道会接收到所有的消息, 只是会过滤掉不是自己的消息
 	void handle_message(channel_identifier channel_id, avbotmsg msg, send_avbot_message_t, boost::asio::yield_context);
+	void broadcast_message(avbotmsg msg, send_avbot_message_t, boost::asio::yield_context);
 
 	void add_room(std::string protocol, std::string room)
 	{

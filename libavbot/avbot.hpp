@@ -15,6 +15,8 @@
 #include <boost/variant.hpp>
 
 #include "avchannel.hpp"
+#include "avaccount.hpp"
+
 #include "libwebqq/webqq.hpp"
 #include "irc.hpp"
 #include "libxmpp/xmpp.hpp"
@@ -33,9 +35,10 @@ private:
 	std::vector<std::shared_ptr<irc::client>> m_irc_accounts;
 	std::vector<std::shared_ptr<xmpp>> m_xmpp_accounts;
 	std::vector<std::shared_ptr<avim>> m_avim_accounts;
+	std::vector<std::shared_ptr<avaccount>> m_std_accounts;
 	std::shared_ptr<mx::mx> m_mail_account;
 
-	std::vector<std::shared_ptr<avchannel>> m_avchannels;
+	std::map<std::string, std::shared_ptr<avchannel>> m_avchannels;
 
 	// maps from protocol and room name to accounts
 	std::map<channel_identifier, accounts_t> m_account_mapping;
@@ -49,10 +52,11 @@ public:
 	boost::asio::io_service & get_io_service();
 
 	// 添加一个 channel
-	void add_channel(std::shared_ptr<avchannel>);
+	void add_channel(std::string name, std::shared_ptr<avchannel>);
 
 public:
 	void send_avbot_message(channel_identifier, avbotmsg, boost::asio::yield_context);
+	void send_broadcast_message(std::string channel_name, avbotmsg);
 
 public:
 	// 这里是一些公开的成员变量.
@@ -70,11 +74,6 @@ public:
 
 	// 每当有消息的时候激发.
 	on_message_type on_message;
-	// 每当有新的频道被创建的时候激发
-	// 还记得吗？如果libweqq找到了一个QQ群，会自动创建和QQ群同名的频道的（如果不存在的话）
-	// 这样就保证没有被加入 map= 的群也能及时的被知道其存在.
-	// 呵呵，主要是 libjoke 用来知道都有那些频道存在
-	boost::signals2::signal< void (std::string) > signal_new_channel;
 
 	std::string preamble_qq_fmt, preamble_irc_fmt, preamble_xmpp_fmt;
 
@@ -97,6 +96,9 @@ public:
 	// 调用这个设置avim账户
 	std::shared_ptr<avim> add_avim_account(std::string key, std::string cert);
 
+	// 调用这个添加其他帐号!
+	void add_std_account(std::shared_ptr<avaccount>);
+
 	// 调用这个设置邮件账户.
 	void set_mail_account(std::string mailaddr, std::string password, std::string pop3server = "", std::string smtpserver = "");
 
@@ -106,7 +108,7 @@ private:
 	void callback_on_xmpp_group_message(std::shared_ptr<xmpp>, std::string xmpproom, std::string who, std::string message);
 	void callback_on_mail(mailcontent mail, mx::pop3::call_to_continue_function call_to_contiune);
 	void callback_on_avim(std::string reciver, std::string sender, std::vector<avim_msg>);
-
+	void callback_on_std_account(std::shared_ptr<avaccount>, channel_identifier, const avbotmsg&);
 private:
 	void callback_on_qq_group_found(std::shared_ptr<webqq::webqq>, webqq::qqGroup_ptr);
 	void callback_on_qq_group_newbee(std::shared_ptr<webqq::webqq>, webqq::qqGroup_ptr, webqq::qqBuddy_ptr);

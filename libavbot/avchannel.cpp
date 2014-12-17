@@ -20,3 +20,12 @@ void avchannel::handle_message(channel_identifier channel_id, avbotmsg msg, send
         send_avbot_message(room, msg, yield_context);
     }
 }
+
+void avchannel::broadcast_message(avbotmsg msg, send_avbot_message_t send_avbot_message, boost::asio::yield_context yield_context)
+{
+    // 开始处理消息
+    for (auto room : m_rooms)
+    {
+        send_avbot_message(room, msg, yield_context);
+    }
+}

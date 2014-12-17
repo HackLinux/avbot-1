@@ -106,9 +106,9 @@ boost::asio::io_service& avbot::get_io_service()
     return m_io_service;
 }
 
-void avbot::add_channel(std::shared_ptr< avchannel > c)
+void avbot::add_channel(std::string name, std::shared_ptr< avchannel > c)
 {
-    m_avchannels.push_back(c);
+    m_avchannels.insert(std::make_pair(name, c));
 }
 
 void avbot::callback_on_irc_message(std::shared_ptr<irc::client> irc_account, irc::irc_msg pMsg )
@@ -324,6 +324,11 @@ void avbot::callback_on_avim(std::string reciver, std::string sender, std::vecto
 	on_message(channel_id, message);
 }
 
+void avbot::callback_on_std_account(std::shared_ptr<avaccount> std_account, channel_identifier i, const avbotmsg& m)
+{
+	on_message(i,m);
+}
+
 void avbot::callback_on_qq_group_found(std::shared_ptr<webqq::webqq> qq_account, webqq::qqGroup_ptr group)
 {
 	channel_identifier channel_id;
@@ -431,14 +436,22 @@ std::shared_ptr<avim> avbot::add_avim_account(std::string key, std::string cert)
 	return avim_account;
 }
 
+void avbot::add_std_account(std::shared_ptr<avaccount> std_account)
+{
+	m_std_accounts.push_back(std_account);
+
+	std_account->on_message.connect(std::bind(&avbot::callback_on_std_account, this, std_account, std::placeholders::_1, std::placeholders::_2));
+}
+
 void avbot::forward_message( const channel_identifier& i, const avbotmsg& m)
 {
 	send_avbot_message_t message_sender = std::bind(&avbot::send_avbot_message, this,
 		std::placeholders::_1, std::placeholders::_2, std::placeholders::_3);
 
 	bool processed = false;
-	for (std::shared_ptr<avchannel> & c : m_avchannels)
+	for (auto& pair : m_avchannels)
 	{
+		std::shared_ptr<avchannel> & c = pair.second;
 		if (c->can_handle(i))
 		{
 			processed = true;
@@ -517,6 +530,22 @@ void avbot::send_avbot_message(channel_identifier id, avbotmsg msg, boost::asio:
 
 	return init.result.get();
 }
+
+void avbot::send_broadcast_message(std::string channel_name, avbotmsg msg)
+{
+	send_avbot_message_t message_sender = std::bind(&avbot::send_avbot_message, this,
+		std::placeholders::_1, std::placeholders::_2, std::placeholders::_3);
+
+	auto channel_iter = m_avchannels.find(channel_name);
+	if (channel_iter!= m_avchannels.end())
+	{
+		boost::asio::spawn(get_io_service(), [channel_iter, msg, message_sender](boost::asio::yield_context yield_context)
+		{
+			channel_iter->second->broadcast_message(msg, message_sender, yield_context);
+		});
+	}
+}
+
 
 std::string avbot::format_message_for_qq(const avbotmsg& message )
 {

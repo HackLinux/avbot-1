@@ -39,9 +39,10 @@
 
 extern avlog logfile;			// 用于记录日志文件.
 
-static void sender(avbot & mybot,std::string channel_name, std::string txt, bool logtohtml)
+static void sender(avbot & mybot, std::string channel_name, std::string txt, bool logtohtml)
 {
-	mybot.broadcast_message(channel_name, txt);
+	mybot.send_broadcast_message(channel_name, avbotmsg(txt));
+
 	if (logtohtml){
 		logfile.add_log(channel_name, avlog::html_escape(txt), 0);
 	}
@@ -164,7 +165,7 @@ void new_channel_set_extension(boost::asio::io_service &io_service, avbot & mybo
 			io_service.wrap(boost::bind(sender, boost::ref(mybot), channel_name, _1, 0))
 		)
 	);
-#endif 
+#endif
 
 #ifdef _WIN32
 	mybot.on_message.connect(
