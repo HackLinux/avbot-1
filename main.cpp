@@ -69,8 +69,6 @@ namespace po = boost::program_options;
 
 #include "libwebqq/webqq.hpp"
 
-#include "counter.hpp"
-
 #include "botctl.hpp"
 #include "input.hpp"
 #include "avbot_vc_feed_input.hpp"
@@ -97,7 +95,6 @@ extern pt::ptree parse_cfg(std::string filecontent);
 char * execpath;
 avlog logfile;			// 用于记录日志文件.
 
-static counter cnt;				// 用于统计发言信息.
 static std::string progname;
 static bool need_vc = false;
 
@@ -703,7 +700,7 @@ int main(int argc, char * argv[])
 
 				// 开启 bot 控制.
 				channel->handle_extra_message.connect(
-					std::bind(on_bot_command, std::placeholders::_1, std::placeholders::_2, std::ref(mybot), std::ref(*channel))
+					std::bind(on_bot_command, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::ref(mybot), std::ref(*channel))
 				);
 			}
 		}

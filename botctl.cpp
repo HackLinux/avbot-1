@@ -38,8 +38,6 @@
 
 #include "libwebqq/webqq.hpp"
 
-#include "counter.hpp"
-
 #include "auto_welcome.hpp"
 #include "botctl.hpp"
 
@@ -209,7 +207,7 @@ struct mail_recoder
 
 // 命令控制, 所有的协议都能享受的命令控制在这里实现.
 // msg_sender 是一个函数, on_command 用/*它发送消息.
-void on_bot_command(channel_identifier cid, avbotmsg avmessage, avbot& mybot, avchannel& channel)
+void on_bot_command(channel_identifier cid, avbotmsg avmessage, send_avchannel_message_t sendmsg, boost::asio::yield_context yield_context, avbot& mybot, avchannel& channel)
 {
 	boost::regex ex;
 	boost::smatch what;
@@ -219,11 +217,6 @@ void on_bot_command(channel_identifier cid, avbotmsg avmessage, avbot& mybot, av
 
 	auto msg_sender = boost::bind(&avbot::send_broadcast_message, &mybot,
 		channelname, _1
-	);
-
-	std::function<void(std::string)> sendmsg = mybot.get_io_service().wrap(
-		std::bind(iopost_msg, std::ref(mybot.get_io_service()),
-			msg_sender, std::placeholders::_1, channelname)
 	);
 
 	std::string message = mybot.format_message_for_textIM(avmessage);
@@ -247,20 +240,20 @@ void on_bot_command(channel_identifier cid, avbotmsg avmessage, avbot& mybot, av
 			"== 以下命令需要管理员才能使用==\n"
 			"\t.qqbot relogin 强制重新登录qq\n\t.qqbot reload 重新加载群成员列表\n"
 			"\t.qqbot begin class XXX\t开课\n\t.qqbot end class 下课\n"
-			"以上!"
+			"以上!", yield_context
 		);
 	}
 
 	if (message == ".qqbot ping")
 	{
-		sendmsg("我还活着!");
+		sendmsg("我还活着!", yield_context);
 		return;
 	}
 
 	if (message == ".qqbot version")
 	{
 		sendmsg(boost::str(boost::format("我的版本是 %s (%s %s)")
-			% avbot_version() % __DATE__ % __TIME__)
+			% avbot_version() % __DATE__ % __TIME__), yield_context
 		);
 		return;
 	}
@@ -302,7 +295,7 @@ void on_bot_command(channel_identifier cid, avbotmsg avmessage, avbot& mybot, av
 			do_vc_code(what[1]);
 		else
 		{
-			sendmsg("哈? 输入验证码干嘛?");
+			sendmsg("哈? 输入验证码干嘛?", yield_context);
 		}
 	}
 
@@ -365,7 +358,7 @@ void on_bot_command(channel_identifier cid, avbotmsg avmessage, avbot& mybot, av
 
 		if (!logfile.begin_lecture(channelname, title))
 		{
-			sendmsg("lecture failed!\n");
+			sendmsg("lecture failed!\n", yield_context);
 		}
 
 		return;
@@ -393,7 +386,7 @@ void on_bot_command(channel_identifier cid, avbotmsg avmessage, avbot& mybot, av
 // 				std::bind(&webqq::webqq::update_group_member, mybot.get_qq() , group)
 // 			);
 
-		sendmsg("群成员列表重加载.");
+		sendmsg("群成员列表重加载.", yield_context);
 
 		return;
 	}
