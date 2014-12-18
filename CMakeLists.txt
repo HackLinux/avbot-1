@@ -197,7 +197,6 @@ set(AVBOT_SOURCES
 	auto_welcome.hpp
 	avbot_vc_feed_input.hpp
 	botctl.hpp
-	counter.hpp
 	input.hpp
 	main.cpp
 	botctl.cpp
