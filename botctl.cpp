@@ -209,13 +209,13 @@ struct mail_recoder
 
 // 命令控制, 所有的协议都能享受的命令控制在这里实现.
 // msg_sender 是一个函数, on_command 用/*它发送消息.
-void on_bot_command(channel_identifier cid, avbotmsg avmessage, avbot& mybot, std::shared_ptr<avchannel> channel)
+void on_bot_command(channel_identifier cid, avbotmsg avmessage, avbot& mybot, avchannel& channel)
 {
 	boost::regex ex;
 	boost::smatch what;
 	webqq::qqGroup_ptr  group;
 
-	std::string channelname = channel->name();
+	std::string channelname = channel.name();
 
 	auto msg_sender = boost::bind(&avbot::send_broadcast_message, &mybot,
 		channelname, _1
@@ -283,7 +283,7 @@ void on_bot_command(channel_identifier cid, avbotmsg avmessage, avbot& mybot, st
 
 		avchannel::handle_extra_message_type::extended_slot_type mrecoder_slot(mrecoder, _2, _3, _4, _5, _1);
 
-		channel->handle_extra_message.connect_extended(mrecoder_slot);
+		channel.handle_extra_message.connect_extended(mrecoder_slot);
 		return;
 	}
 

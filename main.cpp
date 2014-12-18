@@ -321,35 +321,6 @@ static void init_database(soci::session & db)
 	");";
 }
 
-static void my_on_bot_command(channel_identifier cid, avbotmsg message, avbot & mybot)
-{
-	try
-	{
-		std::string textmessage;
-		return;
-
-
-		textmessage = "";
-		// 如果没有发生异常, 那就是新人入群消息了, 嘻嘻.
-		// 格式化为 .qqbot newbee XXX, 哼!
-		std::string nick = message.sender.nick;
-		textmessage = boost::str(boost::format(".qqbot newbee %s") % nick);
-// 		/*message*/.put("message.text", textmessage);
-// 		message.put("op", 1);
-
-		boost::delayedcallsec(
-				mybot.get_io_service(),
-				6,
-				std::bind(on_bot_command, cid, message, std::ref(mybot), mybot.get_channel(cid))
-		);
-		return;
-
-		on_bot_command(cid, message, mybot, mybot.get_channel(cid));
-	}
-	catch (...)
-	{}
-}
-
 #ifdef WIN32
 int daemon(int nochdir, int noclose)
 {
@@ -729,16 +700,15 @@ int main(int argc, char * argv[])
 
 				// 开启 extension
 				new_channel_set_extension(mybot, *channel, channel_name);
+
+				// 开启 bot 控制.
+				channel->handle_extra_message.connect(
+					std::bind(on_bot_command, std::placeholders::_1, std::placeholders::_2, std::ref(mybot), std::ref(*channel))
+				);
 			}
 		}
 
 	}
-
-
-	// 开启 bot 控制.
-	mybot.on_message.connect(
-		std::bind(my_on_bot_command, std::placeholders::_1, std::placeholders::_2, std::ref(mybot))
-	);
 
 	boost::asio::io_service::work work(io_service);
 
