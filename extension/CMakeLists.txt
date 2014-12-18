@@ -1,7 +1,6 @@
 
 option(ENABLE_LUA "enable lua script support" ON)
 option(ENABLE_PYTHON "enable python script support" OFF)
-option(ENABLE_ZMQ "enable zmq support" ON)
 
 find_package(ZLIB)
 if (ZLIB_FOUND)
@@ -23,15 +22,6 @@ set(EXTENSION_SOURCES
 
 	dllextension.hpp
 )
-
-if (ENABLE_ZMQ)
-	set(WITH_TWEETNACL OFF)
-	include_directories(libzmq/include)
-	add_subdirectory(libzmq EXCLUDE_FROM_ALL)
-	list(APPEND EXTENSION_SOURCES zmqpublisher.cpp zmqpublisher.hpp)
-	set_source_files_properties(zmqpublisher.cpp
-		PROPERTIES COMPILE_FLAGS "-DZMQ_STATIC")
-endif()
 
 include_directories(../qqwry/include)
 
@@ -106,12 +96,6 @@ endif()
 
 if(LUAJIT_FOUND AND ENABLE_LUA)
 	target_link_libraries(extension libluascript)
-endif()
-
-if (ENABLE_ZMQ)
-	set_source_files_properties(extension.cpp
-		PROPERTIES COMPILE_FLAGS "-DENABLE_ZMQ")
-	target_link_libraries(extension libzmq-static)
 endif()
 
 target_link_libraries(extension libavbot)
