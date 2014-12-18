@@ -1,6 +1,6 @@
-#  avbot = 聊天机器人（QQ云秘书）[![Build Status](https://travis-ci.org/avplayer/avbot.png?branch=master)](https://travis-ci.org/avplayer/avbot)
+﻿#  avbot = 聊天机器人（QQ云秘书）[![Build Status](https://travis-ci.org/avplayer/avbot.png?branch=master)](https://travis-ci.org/avplayer/avbot)
 
-avbot 连通 IRC、XMPP 和  QQ群，并能实时记录聊天信息。每日自动生成新的日志文件。
+avbot 连通 IRC、XMPP 和 QQ群, 并作为 AVIM 群机器人实现 AVIM 群聊功能. 能实时记录聊天信息。每日自动生成新的日志文件。
 
 使用方法和介绍参考 [社区维基的avbot介绍](http://wiki.avplayer.org/avbot)
 
@@ -8,23 +8,19 @@ avbot 连通 IRC、XMPP 和  QQ群，并能实时记录聊天信息。每日自�
 
 想了解 avbot 最重要的子模块 libwebqq 请点开 libwebqq 目录查看其 README.md
 
-# 支持的系统 
+# 支持的系统
 
 cmake >= 2.8.11
 
 ## GCC 系
 
-centos >= 6.4
+centos >= 7
 
-ubuntu >= 12.04
+ubuntu >= 14.04
 
 debian >= 7
 
-和其他一些 gcc >= 4.4.7 的系统。
-
-centos6 请添加 atrpm 源安装 cmake 2.8 版本。自带的 cmake 2.6 太旧。
-
-ubuntu 12.04 也得添加 ppa 安装 cmake 2.8.11, 自带的 cmake 2.8.4 太旧
+和其他一些 gcc >= 4.8 的系统。
 
 ## MSVC 系
 
@@ -32,7 +28,7 @@ VisutalStudio 2013 (支持 Vista 以上系统)
 
 VisutalStudio 2013 - vc120_xp toolset （支持 Windows XP 以上系统）
 
- 启用步骤 
+ 启用步骤
 
   > cmake -G "VisualStudio 12" -T "vc120_xp"
 
@@ -40,15 +36,9 @@ VisutalStudio 2013 - vc120_xp toolset （支持 Windows XP 以上系统）
 
 ## icc 系
   icc >= 13
-  
+
 ## clang 系
-  clang >= 3.3
-
-## mingw 系
-
-mingw32 不支持，需要使用 mingw64
-
-mingw64 >= 4.8
+  clang >= 3.4
 
 # 编译注意事项
 
@@ -59,7 +49,7 @@ mingw64 >= 4.8
 
 ## boost 相关
 
-boost 需要至少 1.55 版本。 
+boost 需要至少 1.57 版本。
 
 boost 请静态编译， gentoo 用户注意 USE=static-libs emerge boost
 
@@ -71,19 +61,7 @@ link=static 表示编译为静态库， runtime-link=static 则表示，应用�
 
 linux 那边 runtime-link=shared 表示使用动态链接的 libstdc++.so， libstdc++.so 无需静态链接，不是么 ;)
 
-## mingw 相关
-mingw 下编译务必选择 Mingw Makefiles 生成器。MSYS Makefiles 和 生成器虽然 cmake 阶段能过，但是编译阶段会失败。
-
-如果 mingw 带的 make 不是 mingw32-make.exe 而是直接 make.exe （比如 STL 发现的编译版本）
-需要在 cmake 里设定 CMAKE_MAKE_PROGRAM=make.exe的绝对路径。而不要因为找不到 make 去选择 MSYS Makefiles 这个生成器。
-
-主要原因是 MSYS Makefiles 生成器让 cmake 里 if(WIN32) 部分条件指令为 FALSE 。导致设定出错。
-
-如果不是，需要设定 BOOST_ROOT, 可以在 cmake-gui 里点 configure 按钮前，通过 "Add Enytry" 按钮添加。
-STL 打包的 mingw 自带 boost, 可以设定 BOOST_ROOT=c:/mingw 即可。
-不过 STL 打包的 mingw 没有编译 context 和 coroutine 库，可以自己用 b2 toolset=gcc 编译了，把 libboost_context.a 和 libboost_coroutine.a 拷贝到 c:/mingw/lib
-
-注意， 添加 --layout=system variant=release 才能编译出 libbosot_context.a 这样的不带各种后缀的库版本。
+添加 --layout=system variant=release 才能编译出 libbosot_context.a 这样的不带各种后缀的库版本。
 
 ## MSVC 相关
 
