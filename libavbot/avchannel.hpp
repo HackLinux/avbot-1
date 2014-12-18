@@ -32,6 +32,9 @@ struct avbotmsg_segment
 	avbotmsg_segment(const avbotmsg_segment&) = default;
 	avbotmsg_segment(avbotmsg_segment&&) = default;
 
+	avbotmsg_segment& operator =(const avbotmsg_segment&) = default;
+	avbotmsg_segment& operator =(avbotmsg_segment&&) = default;
+
 	template<class ANY>
 	avbotmsg_segment(std::string _type, ANY any)
 		: type(_type)
@@ -58,6 +61,11 @@ struct avbotmsg
 	std::vector<avbotmsg_segment> msgs;
 
 	avbotmsg() = default;
+	avbotmsg(avbotmsg&&) = default;
+	avbotmsg(const avbotmsg&) = default;
+
+	avbotmsg& operator =(avbotmsg&&) = default;
+	avbotmsg& operator =(const avbotmsg&) = default;
 
 	avbotmsg(std::string plain_text)
 	{
@@ -94,8 +102,10 @@ struct channel_identifier
 	channel_identifier() = default;
 
 	channel_identifier(channel_identifier&&) = default;
-
 	channel_identifier(const channel_identifier&) = default;
+	channel_identifier& operator =(channel_identifier&&) = default;
+	channel_identifier& operator =(const channel_identifier&) = default;
+
 
 	channel_identifier(std::pair<std::string, std::string> p)
 		: protocol(p.first) , room(p.second) {}
