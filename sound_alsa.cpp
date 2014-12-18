@@ -1,9 +1,11 @@
-
+﻿
 #include <cstdlib>
 #include <cstdio>
 #include <assert.h>
 #include <endian.h>
-#include <boost/thread.hpp>
+#include <thread>
+#include <iostream>
+#include <memory>
 #include <alsa/asoundlib.h>
 #include <alsa/pcm.h>
 #include <alsa/output.h>
@@ -73,7 +75,7 @@ static void play_thread(const Chunk_fmt* fmt_chunk = NULL, const Chunk * pcm_chu
 	snd_pcm_uframes_t frames = pcm_chunk->data_size / ( le16toh(fmt_chunk->channels) * le16toh(fmt_chunk->samplebits)/8);
 
 	int ret;
-	boost::shared_ptr<snd_pcm_t> pcm;
+	std::shared_ptr<snd_pcm_t> pcm;
 	snd_pcm_t * _pcm = NULL;
 	ret = snd_pcm_open(&_pcm, "default", SND_PCM_STREAM_PLAYBACK, 0);
 	pcm.reset(_pcm, snd_pcm_close);
@@ -126,6 +128,6 @@ extern "C" int playsound()
 	if ((!pcm_chunk) || (!fmt_chunk))
 		return 0;
 
-	boost::thread(play_thread, fmt_chunk, pcm_chunk).detach();
+	std::thread(std::bind(play_thread, fmt_chunk, pcm_chunk)).detach();
 	return 0;
 }
