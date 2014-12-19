@@ -641,9 +641,15 @@ int main(int argc, char * argv[])
 
 				auto avim_client = mybot.add_avim_account(key, cert);
 
-			}else if (account.first == "log")
+			}else if (account.first == "global")
 			{
-				run_root = account.second.get<std::string>("dir");
+				run_root = account.second.get<std::string>("logdir");
+
+				if (!account.second.get<std::string>("antigate_key","").empty())
+					antigate_key = account.second.get<std::string>("antigate_key");
+
+				if (!account.second.get<std::string>("antigate_host","").empty())
+					antigate_host = account.second.get<std::string>("antigate_host");
 			}
 		}catch(const boost::property_tree::ptree_error&)
 		{}
